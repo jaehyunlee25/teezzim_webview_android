@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">teezzim webview test</string>
+    <string name="jsStr">
+        javascript:(()=>{
+            document.getElementById(\'loginId\').value = \'newrison\';
+            document.getElementById(\'loginPw\').value = \'ilovegolf778\';
+            Data_Save();
+        })();
+    </string>
+</resources>
