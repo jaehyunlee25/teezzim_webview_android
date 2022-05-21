@@ -28,6 +28,7 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Hashtable;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -35,8 +36,10 @@ public class MainActivity extends AppCompatActivity {
     WebView wView;
     Button button;
     Spinner spinner;
-    String selURL;
+    String postURL;
+    String postParam;
     String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
+    // String urlHeader = "http://10.0.2.2:8080/";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -48,14 +51,40 @@ public class MainActivity extends AppCompatActivity {
         initButton();
         spinner = (Spinner) findViewById(R.id.spinner);
 
-        ArrayList<String> list = new ArrayList();
-        list.add("island");
-        list.add("jinyang");
+        // call thread for clubs
+        postURL = urlHeader + "clubs";
+        postParam = "{}";
+        CallThread ct = new CallThread();
+        ct.start();
+        try {
+            ct.join();
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+
+        // http response 수신
+        String strResult = ct.getResult();
+        Log.d("RESULT", strResult);
+
+        // json parse
+        JSONObject json;
+        ArrayList<String> list = new ArrayList();;
+        try {
+            json = new JSONObject(strResult);
+            Log.d("clubs", json.getString("clubs"));
+            JSONArray ja = new JSONArray(json.getString("clubs"));
+            for (int i = 0; i < ja.length(); i++) {
+                list.add(ja.getString(i));
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return;
+        }
 
         ArrayAdapter<String> items = new ArrayAdapter<String>(
-                this,
-                android.R.layout.simple_spinner_dropdown_item,
-                list
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            list
         );
         spinner.setAdapter(items);
         initSpinner();
@@ -77,12 +106,9 @@ public class MainActivity extends AppCompatActivity {
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Hashtable<String, String> ht = new Hashtable<String, String>();
-                ht.put("island", urlHeader + "island");
-                ht.put("jinyang", urlHeader + "jinyang");
+                String clubEngName = spinner.getSelectedItem().toString();
+                postURL = urlHeader + clubEngName;
 
-                String value = spinner.getSelectedItem().toString();
-                selURL = ht.get(value);
                 CallThread ct = new CallThread();
                 ct.start();
                 try {
@@ -110,10 +136,61 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
+                // login hashtable
+                Hashtable<String, Hashtable<String, String>> htLogin = new Hashtable<String, Hashtable<String, String>>();
+                setIdPw(htLogin, "allday", "jhlee25", "ilovegolf778");
+                setIdPw(htLogin, "bearsbest", "newrison", "ilovegolf778");
+                setIdPw(htLogin, "delphino", "newrison", "ilovegolf778");
+                setIdPw(htLogin, "dongchon", "jhlee25", "ilovegolf778");
+                setIdPw(htLogin, "dreampark", "newrison", "ilovegolf778");
+
+                setIdPw(htLogin, "hantan", "newrison", "ilovegolf778");
+                setIdPw(htLogin, "hilldeloci", "newrison", "ilovegolf778");
+                setIdPw(htLogin, "imperiallake", "newrison", "ilovegolf778");
+                setIdPw(htLogin, "inchungrand", "mnemosyne", "ilovegolf778");
+                setIdPw(htLogin, "island", "newrison", "ilovegolf778");
+
+                setIdPw(htLogin, "jayuro", "jhlee25", "ilovegolf778");
+                setIdPw(htLogin, "jinyang", "newrison", "ilovegolf778");
+                setIdPw(htLogin, "lakeside", "newrison", "ilovegolf778");
+                setIdPw(htLogin, "lakewood", "newrison", "ilovegolf778");
+                setIdPw(htLogin, "midas_gumi", "mnemosyne", "ilovegolf778");
+
+                setIdPw(htLogin, "midas_lake", "mnemosyne", "ilovegolf778");
+                setIdPw(htLogin, "midas_valley", "mnemosyne", "ilovegolf778");
+                setIdPw(htLogin, "montvert", "mnemosyne", "ilovegolf778");
+                setIdPw(htLogin, "namchunchun", "mnemosyne", "ya2ssarama!");
+                setIdPw(htLogin, "namyeoju", "newrison", "ilovegolf778");
+
+                setIdPw(htLogin, "oxfield", "jhlee25", "ilovegolf778");
+                setIdPw(htLogin, "paganica_KMH", "mnemosyne", "ya2ssarama!");
+                setIdPw(htLogin, "paju_KMH", "mnemosyne", "ya2ssarama!");
+                setIdPw(htLogin, "parkvalley", "jhlee25", "ilovegolf778");
+                setIdPw(htLogin, "players", "newrison", "ilovegolf778");
+
+                setIdPw(htLogin, "rainbowhills_KMH", "newrison", "ilovegolf778");
+                setIdPw(htLogin, "royalforet", "jhlee25", "ilovegolf778");
+                setIdPw(htLogin, "seowon", "newrison", "ilovegolf778");
+                setIdPw(htLogin, "shilla_KMH", "newrison", "ilovegolf778");
+                setIdPw(htLogin, "sky72", "newrison", "ilovegolf778");
+
+                setIdPw(htLogin, "smartku", "newrison", "ilovegolf778");
+                setIdPw(htLogin, "sophiagreen", "newrison", "ilovegolf778");
+                setIdPw(htLogin, "southsprings", "mnemosyne", "ya2ssarama!");
+                setIdPw(htLogin, "sunhill", "김덕우", "01071678790");
+                setIdPw(htLogin, "tgv_KMH", "mnemosyne", "ya2ssarama!");
+
+                setIdPw(htLogin, "uni_island", "jhlee25", "ilovegolf778");
+                setIdPw(htLogin, "vivaldi_east", "newrison", "ilovegolf778");
+                setIdPw(htLogin, "vivaldi_mountain", "newrison", "ilovegolf778");
+                setIdPw(htLogin, "vivaldi_west", "newrison", "ilovegolf778");
+                setIdPw(htLogin, "yongin", "newrison", "ya2ssarama!");
+
                 // params into template script
                 Hashtable<String, String> params = new Hashtable<String, String>();
-                params.put("login_id", "newrison");
-                params.put("login_password", "ilovegolf778");
+                Hashtable<String, String> idpw = htLogin.get(clubEngName);
+                params.put("login_id", idpw.get("id"));
+                params.put("login_password", idpw.get("pw"));
                 String loginScript = setStringTemplate(params, scriptTemplate);
                 initWebView(loginUrl, loginScript);
             }
@@ -141,7 +218,7 @@ public class MainActivity extends AppCompatActivity {
         private String Result;
         public void run() {
             try{
-                URL testUrl = new URL(selURL);
+                URL testUrl = new URL(postURL);
                 HttpURLConnection urlConn = (HttpURLConnection) testUrl.openConnection();
 
                 // [2-1]. urlConn 설정.
@@ -157,7 +234,7 @@ public class MainActivity extends AppCompatActivity {
 
 
                 // [2-2]. parameter 전달 및 데이터 읽어오기.
-                String strParams = "{}"; //sbParams에 정리한 파라미터들을 스트링으로 저장. 예)id=id1&pw=123;
+                String strParams = postParam; //sbParams에 정리한 파라미터들을 스트링으로 저장. 예)id=id1&pw=123;
                 OutputStream os = urlConn.getOutputStream();
                 os.write(strParams.getBytes("UTF-8")); // 출력 스트림에 출력.
                 os.flush(); // 출력 스트림을 플러시(비운다)하고 버퍼링 된 모든 출력 바이트를 강제 실행.
@@ -169,7 +246,12 @@ public class MainActivity extends AppCompatActivity {
 
                 // [2-4]. 읽어온 결과물 리턴.
                 // 요청한 URL의 출력물을 BufferedReader로 받는다.
-                BufferedReader reader = new BufferedReader(new InputStreamReader(urlConn.getInputStream(), "UTF-8"));
+                BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(
+                        urlConn.getInputStream(),
+                        "UTF-8"
+                    )
+                );
 
                 // 출력물의 라인과 그 합에 대한 변수.
                 String line;
@@ -202,5 +284,11 @@ public class MainActivity extends AppCompatActivity {
         }
         Log.d("template", template);
         return template;
+    }
+    public void setIdPw(Hashtable<String, Hashtable<String, String>> htLogin, String club, String id, String pw) {
+        Hashtable<String, String> ht_island = new Hashtable<String, String>();
+        ht_island.put("id", id);
+        ht_island.put("pw", pw);
+        htLogin.put(club, ht_island);
     }
 }
