@@ -25,6 +25,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Hashtable;
 
@@ -38,15 +39,18 @@ public class MainActivity extends AppCompatActivity {
     Spinner spinner;
     String postURL;
     String postParam;
-    String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
-    // String urlHeader = "http://10.0.2.2:8080/";
+    Hashtable<String, Hashtable<String, String>> htLogin;
+    // String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
+    String urlHeader = "http://10.0.2.2:8080/";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         wView = (WebView) findViewById(R.id.wView);
-        // initWebView();
+        WebSettings ws = wView.getSettings();
+        ws.setJavaScriptEnabled(true);
+
         button = (Button) findViewById(R.id.button);
         initButton();
         spinner = (Spinner) findViewById(R.id.spinner);
@@ -76,6 +80,45 @@ public class MainActivity extends AppCompatActivity {
             for (int i = 0; i < ja.length(); i++) {
                 list.add(ja.getString(i));
             }
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        // call thread for admin account
+        postURL = urlHeader + "account";
+        postParam = "{}";
+        CallThread ctAccount = new CallThread();
+        ctAccount.start();
+        try {
+            ctAccount.join();
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+
+        // http response 수신
+        String strAccountResult = ctAccount.getResult();
+        Log.d("RESULT", strAccountResult);
+
+        // json parse
+        JSONObject jsonAccount;
+        JSONObject jsonClubs;
+        htLogin = new Hashtable<String, Hashtable<String, String>>();
+        try {
+            jsonAccount = new JSONObject(strAccountResult);
+            Log.d("accounts", jsonAccount.getString("accounts"));
+            jsonClubs = new JSONObject(jsonAccount.getString("accounts"));
+
+            Iterator iter = jsonClubs.keys();
+            while(iter.hasNext()) {
+                String club = (String) iter.next();
+                JSONObject val = (JSONObject) jsonClubs.get(club);
+                String id = (String) val.get("id");
+                String pw = (String) val.get("pw");
+                Log.d("val", val.get("id") + "::" + val.get("pw"));
+                setIdPw(htLogin, club, id, pw);
+            }
+
         } catch (JSONException e) {
             e.printStackTrace();
             return;
@@ -136,84 +179,36 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
-                // login hashtable
-                Hashtable<String, Hashtable<String, String>> htLogin = new Hashtable<String, Hashtable<String, String>>();
-                setIdPw(htLogin, "allday", "jhlee25", "ilovegolf778");
-                setIdPw(htLogin, "bearsbest", "newrison", "ilovegolf778");
-                setIdPw(htLogin, "delphino", "newrison", "ilovegolf778");
-                setIdPw(htLogin, "dongchon", "jhlee25", "ilovegolf778");
-                setIdPw(htLogin, "dreampark", "newrison", "ilovegolf778");
-
-                setIdPw(htLogin, "hantan", "newrison", "ilovegolf778");
-                setIdPw(htLogin, "hilldeloci", "newrison", "ilovegolf778");
-                setIdPw(htLogin, "imperiallake", "newrison", "ilovegolf778");
-                setIdPw(htLogin, "inchungrand", "mnemosyne", "ilovegolf778");
-                setIdPw(htLogin, "island", "newrison", "ilovegolf778");
-
-                setIdPw(htLogin, "jayuro", "jhlee25", "ilovegolf778");
-                setIdPw(htLogin, "jinyang", "newrison", "ilovegolf778");
-                setIdPw(htLogin, "lakeside", "newrison", "ilovegolf778");
-                setIdPw(htLogin, "lakewood", "newrison", "ilovegolf778");
-                setIdPw(htLogin, "midas_gumi", "mnemosyne", "ilovegolf778");
-
-                setIdPw(htLogin, "midas_lake", "mnemosyne", "ilovegolf778");
-                setIdPw(htLogin, "midas_valley", "mnemosyne", "ilovegolf778");
-                setIdPw(htLogin, "montvert", "mnemosyne", "ilovegolf778");
-                setIdPw(htLogin, "namchunchun", "mnemosyne", "ya2ssarama!");
-                setIdPw(htLogin, "namyeoju", "newrison", "ilovegolf778");
-
-                setIdPw(htLogin, "oxfield", "jhlee25", "ilovegolf778");
-                setIdPw(htLogin, "paganica_KMH", "mnemosyne", "ya2ssarama!");
-                setIdPw(htLogin, "paju_KMH", "mnemosyne", "ya2ssarama!");
-                setIdPw(htLogin, "parkvalley", "jhlee25", "ilovegolf778");
-                setIdPw(htLogin, "players", "newrison", "ilovegolf778");
-
-                setIdPw(htLogin, "rainbowhills_KMH", "newrison", "ilovegolf778");
-                setIdPw(htLogin, "royalforet", "jhlee25", "ilovegolf778");
-                setIdPw(htLogin, "seowon", "newrison", "ilovegolf778");
-                setIdPw(htLogin, "shilla_KMH", "newrison", "ilovegolf778");
-                setIdPw(htLogin, "sky72", "newrison", "ilovegolf778");
-
-                setIdPw(htLogin, "smartku", "newrison", "ilovegolf778");
-                setIdPw(htLogin, "sophiagreen", "newrison", "ilovegolf778");
-                setIdPw(htLogin, "southsprings", "mnemosyne", "ya2ssarama!");
-                setIdPw(htLogin, "sunhill", "김덕우", "01071678790");
-                setIdPw(htLogin, "tgv_KMH", "mnemosyne", "ya2ssarama!");
-
-                setIdPw(htLogin, "uni_island", "jhlee25", "ilovegolf778");
-                setIdPw(htLogin, "vivaldi_east", "newrison", "ilovegolf778");
-                setIdPw(htLogin, "vivaldi_mountain", "newrison", "ilovegolf778");
-                setIdPw(htLogin, "vivaldi_west", "newrison", "ilovegolf778");
-                setIdPw(htLogin, "yongin", "newrison", "ya2ssarama!");
-
                 // params into template script
                 Hashtable<String, String> params = new Hashtable<String, String>();
                 Hashtable<String, String> idpw = htLogin.get(clubEngName);
                 params.put("login_id", idpw.get("id"));
                 params.put("login_password", idpw.get("pw"));
                 String loginScript = setStringTemplate(params, scriptTemplate);
-                initWebView(loginUrl, loginScript);
+
+                WebViewClient wvc = getLoginWebviewClient(loginScript);
+                wView.setWebViewClient(wvc);
+                wView.loadUrl(loginUrl);
             }
         });
     }
-    public void initWebView(String url, String script) {
-        wView.setWebViewClient(new WebViewClient(){
+    public WebViewClient getLoginWebviewClient(String loginScript) {
+        return new WebViewClient(){
+            int loginToggle = 1;
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
             }
             @Override
             public void onPageFinished(WebView view, String url) {
-                view.loadUrl(script);
+                if(loginToggle == 1) {
+                    view.loadUrl(loginScript);
+                    loginToggle = 0;
+                }
                 super.onPageFinished(view, url);
             }
-        });
-        WebSettings ws = wView.getSettings();
-        ws.setJavaScriptEnabled(true);
-
-        // String strUrl = "https://www.islandresort.co.kr/html/member/login.asp?gopath=/html/reserve/reserve01.asp&b_idx=";
-        wView.loadUrl(url);
-    }
+        };
+    };
     public class CallThread extends Thread {
         private String Result;
         public void run() {
