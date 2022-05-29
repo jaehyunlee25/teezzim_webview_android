@@ -9,8 +9,8 @@ android {
         applicationId "com.mnemosyne.webviewtest"
         minSdk 22
         targetSdk 32
-        versionCode 7
-        versionName "dangsan"
+        versionCode 8
+        versionName "dangsan8"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -36,70 +36,44 @@ import org.json.JSONObject;
 public class MainActivity extends AppCompatActivity {
     WebView wView;
     Button button;
+    Button search;
     Spinner spinner;
     String postURL;
     String postParam;
     Hashtable<String, Hashtable<String, String>> htLogin;
-    // String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
-    String urlHeader = "http://10.0.2.2:8080/";
+    String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
+    // String urlHeader = "http://10.0.2.2:8080/";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        
+        // 웹뷰
         wView = (WebView) findViewById(R.id.wView);
         WebSettings ws = wView.getSettings();
         ws.setJavaScriptEnabled(true);
 
+        // 로그인 버튼
         button = (Button) findViewById(R.id.button);
         initButton();
+
+        // 서치 버튼
+        search = (Button) findViewById(R.id.btnSearch);
+        initSearchButton();
+
+        // 스피너
+        String strResult = getPostCall(urlHeader + "clubs", "{}");
+        ArrayAdapter<String> clubs = getSpinnerAdapter(strResult);
         spinner = (Spinner) findViewById(R.id.spinner);
+        spinner.setAdapter(clubs);
+        initSpinner();
 
-        // call thread for clubs
-        postURL = urlHeader + "clubs";
-        postParam = "{}";
-        CallThread ct = new CallThread();
-        ct.start();
-        try {
-            ct.join();
-        } catch(Exception e) {
-            e.printStackTrace();
-        }
+        // 로그인 관리자 계정
+        String strAccountResult = getPostCall(urlHeader + "account", "{}");
+        setLoginAdminAccount(strAccountResult);
 
-        // http response 수신
-        String strResult = ct.getResult();
-        Log.d("RESULT", strResult);
-
-        // json parse
-        JSONObject json;
-        ArrayList<String> list = new ArrayList();;
-        try {
-            json = new JSONObject(strResult);
-            Log.d("clubs", json.getString("clubs"));
-            JSONArray ja = new JSONArray(json.getString("clubs"));
-            for (int i = 0; i < ja.length(); i++) {
-                list.add(ja.getString(i));
-            }
-        } catch (JSONException e) {
-            e.printStackTrace();
-            return;
-        }
-
-        // call thread for admin account
-        postURL = urlHeader + "account";
-        postParam = "{}";
-        CallThread ctAccount = new CallThread();
-        ctAccount.start();
-        try {
-            ctAccount.join();
-        } catch(Exception e) {
-            e.printStackTrace();
-        }
-
-        // http response 수신
-        String strAccountResult = ctAccount.getResult();
-        Log.d("RESULT", strAccountResult);
-
+    }
+    public void setLoginAdminAccount(String strAccountResult) {
         // json parse
         JSONObject jsonAccount;
         JSONObject jsonClubs;
@@ -123,16 +97,31 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
             return;
         }
+    };
+    public ArrayAdapter<String> getSpinnerAdapter(String strResult) {
+        // json parse
+        JSONObject json;
+        ArrayList<String> list = new ArrayList();;
+        try {
+            json = new JSONObject(strResult);
+            Log.d("clubs", json.getString("clubs"));
+            JSONArray ja = new JSONArray(json.getString("clubs"));
+            for (int i = 0; i < ja.length(); i++) {
+                list.add(ja.getString(i));
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
 
+        // set spinner
         ArrayAdapter<String> items = new ArrayAdapter<String>(
-            this,
-            android.R.layout.simple_spinner_dropdown_item,
-            list
+                this,
+                android.R.layout.simple_spinner_dropdown_item,
+                list
         );
-        spinner.setAdapter(items);
-        initSpinner();
-    }
 
+        return items;
+    };
     public void initSpinner() {
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -150,28 +139,13 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 String clubEngName = spinner.getSelectedItem().toString();
-                postURL = urlHeader + clubEngName;
-
-                CallThread ct = new CallThread();
-                ct.start();
-                try {
-                    ct.join();
-                } catch(Exception e) {
-                    e.printStackTrace();
-                }
-
-                // http response 수신
-                String strResult = ct.getResult();
-                Log.d("RESULT", strResult);
-
+                String strResult = getPostCall(urlHeader + clubEngName, "{}");
                 // json parse
                 JSONObject json;
                 String scriptTemplate = "";
                 String loginUrl = "";
                 try {
                     json = new JSONObject(strResult);
-                    Log.d("URL", json.getString("url"));
-                    Log.d("script", json.getString("script"));
                     scriptTemplate = json.getString("script");
                     loginUrl = json.getString("url");
                 } catch (JSONException e) {
@@ -192,6 +166,50 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+    public void initSearchButton() {
+        search.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String clubEngName = spinner.getSelectedItem().toString();
+                String param = "{\"club\": \"" + clubEngName + "\"}";
+                String strResult = getPostCall(urlHeader + "search", param);
+                // json parse
+                JSONObject json;
+                String scriptTemplate = "";
+                String searchUrl = "";
+                try {
+                    json = new JSONObject(strResult);
+                    scriptTemplate = json.getString("script");
+                    searchUrl = json.getString("url");
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                    return;
+                }
+
+                // params into template script
+                String searchScript = scriptTemplate;
+                Log.d("script", searchScript);
+                // String searchScript = "javascript:(() => {changeCoDiv(\"76\");})()";
+
+                WebViewClient wvc = getSearchWebviewClient(searchScript);
+                wView.setWebViewClient(wvc);
+                wView.loadUrl(searchUrl);
+            }
+        });
+    };
+    public WebViewClient getSearchWebviewClient(String searchScript) {
+        return new WebViewClient(){
+            @Override
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
+            }
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                view.loadUrl(searchScript);
+                super.onPageFinished(view, url);
+            }
+        };
+    };
     public WebViewClient getLoginWebviewClient(String loginScript) {
         return new WebViewClient(){
             int loginToggle = 1;
@@ -208,6 +226,23 @@ public class MainActivity extends AppCompatActivity {
                 super.onPageFinished(view, url);
             }
         };
+    };
+    public String getPostCall(String url, String param) {
+        postURL = url;
+        postParam = param;
+        CallThread ct = new CallThread();
+        ct.start();
+        try {
+            ct.join();
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+
+        // http response 수신
+        String strResult = ct.getResult();
+        Log.d("RESULT", strResult);
+
+        return strResult;
     };
     public class CallThread extends Thread {
         private String Result;
