@@ -53,34 +53,12 @@ public class SearchActivity  extends AppCompatActivity {
         // 서비스로부터 자료 수신
         Intent service = getIntent();
         String clubEngName = service.getStringExtra("club");
-        
-        // 로그인 스크립트
-        String strResult = getPostCall(urlHeader + clubEngName, "{}");
-        // json parse
-        JSONObject json;
-        String scriptTemplate = "";
-        String loginUrl = "";
-        try {
-            json = new JSONObject(strResult);
-            scriptTemplate = json.getString("script");
-            loginUrl = json.getString("url");
-        } catch (JSONException e) {
-            e.printStackTrace();
-            return;
-        }
-        // params into template script
-        Hashtable<String, String> params = new Hashtable<String, String>();
-        Hashtable<String, String> idpw = htLogin.get(clubEngName);
-        params.put("login_id", idpw.get("id"));
-        params.put("login_password", idpw.get("pw"));
-        String loginScript = setStringTemplate(params, scriptTemplate);
-        // 큐에 자료 삽입
-        queue.add(loginScript);
 
         String param = "{\"club\": \"" + clubEngName + "\"}";
-        strResult = getPostCall(urlHeader + "search", param);
+        String strResult = getPostCall(urlHeader + "searchbot", param);
         // json parse
-
+        JSONObject json;
+        String scriptTemplate;
         try {
             json = new JSONObject(strResult);
             scriptTemplate = json.getString("script");
@@ -92,19 +70,15 @@ public class SearchActivity  extends AppCompatActivity {
 
         // params into template script
         searchScript = scriptTemplate;
-        // Log.d("script", searchScript);
-        // 큐에 자료 삽입
-        queue.add(searchUrl);
-        queue.add(searchScript);
 
         // 웹뷰
         wView = (WebView) findViewById(R.id.wView);
         WebSettings ws = wView.getSettings();
         ws.setJavaScriptEnabled(true);
 
-        WebViewClient wvc = getSearchWebviewClient();
+        WebViewClient wvc = getSearchWebviewClient(searchScript);
         wView.setWebViewClient(wvc);
-        wView.loadUrl(loginUrl);
+        wView.loadUrl(searchUrl);
 
         AndroidController ac = new AndroidController();
         wView.addJavascriptInterface(ac, "AndroidController");
@@ -150,7 +124,7 @@ public class SearchActivity  extends AppCompatActivity {
             return;
         }
     };
-    public WebViewClient getSearchWebviewClient() {
+    public WebViewClient getSearchWebviewClient(String searchScript) {
         return new WebViewClient(){
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
@@ -159,12 +133,7 @@ public class SearchActivity  extends AppCompatActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 Log.d("script", "search webview loaded!!");
-                String script = "";
-                if(queue.peek() != null)  {
-                    script = queue.poll();
-                    view.loadUrl(script);
-                }
-
+                view.loadUrl(searchScript);
                 super.onPageFinished(view, url);
             }
         };
