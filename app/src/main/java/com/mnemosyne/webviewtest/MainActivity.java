@@ -1,12 +1,15 @@
 package com.mnemosyne.webviewtest;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.NetworkOnMainThreadException;
 import android.util.Log;
 import android.view.View;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -15,6 +18,10 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.Toast;
+
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -72,7 +79,59 @@ public class MainActivity extends AppCompatActivity {
         String strAccountResult = getPostCall(urlHeader + "account", "{}");
         setLoginAdminAccount(strAccountResult);
 
+        FirebaseMessaging
+            .getInstance()
+            .getToken()
+            .addOnCompleteListener(new OnCompleteListener<String>() {
+                @Override
+                public void onComplete(@NonNull Task<String> task) {
+                    if (!task.isSuccessful()) {
+                        Log.w("TAG", "Fetching FCM registration token failed", task.getException());
+                        return;
+                    }
+
+                    // Get new FCM registration token
+                    String token = task.getResult();
+                    Log.d("Token", token);
+
+                    // Log and toast
+                    // String msg = getString(R.string.msg_token_fmt, token);
+                    // Log.d("TAG", msg);
+                    // Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
+                }
+            });
+        FirebaseMessaging
+            .getInstance()
+            .subscribeToTopic("search")
+            .addOnCompleteListener(new OnCompleteListener<Void>() {
+                @Override
+                public void onComplete(@NonNull Task<Void> task) {
+                    String msg = "successful subscribe!";
+                    if(!task.isSuccessful()) {
+                        msg = "subscribed failed!";
+                    }
+                    Log.d("MSG", msg);
+                }
+            });
+
+        AndroidController ac = new AndroidController();
+        wView.addJavascriptInterface(ac, "AndroidController");
     }
+    public class AndroidController {
+        final public Handler handler = new Handler();
+        @JavascriptInterface
+        public void message(final String message) {
+            Log.d("message from webview", message);
+            handler.post(new Runnable() {
+
+                @Override
+                public void run() {
+                    wView.loadUrl("javascript:(() => { console.log('end'); })();");
+                    // if(message.equals("end of procGolfSchedule!")) finish();
+                }
+            });
+        };
+    };
     public void setLoginAdminAccount(String strAccountResult) {
         // json parse
         JSONObject jsonAccount;
@@ -205,6 +264,7 @@ public class MainActivity extends AppCompatActivity {
             }
             @Override
             public void onPageFinished(WebView view, String url) {
+                Log.d("script", "search webview loaded!!");
                 view.loadUrl(searchScript);
                 super.onPageFinished(view, url);
             }
@@ -219,6 +279,7 @@ public class MainActivity extends AppCompatActivity {
             }
             @Override
             public void onPageFinished(WebView view, String url) {
+                Log.d("script", "login webview loaded!!");
                 if(loginToggle == 1) {
                     view.loadUrl(loginScript);
                     loginToggle = 0;
@@ -305,7 +366,7 @@ public class MainActivity extends AppCompatActivity {
             return this.Result;
         }
     }
-    public String setStringTemplate(Hashtable<String, String> params, String template) {
+    public String setStringTemplate(@NonNull Hashtable<String, String> params, String template) {
         for(String key:params.keySet()) {
             String val = params.get(key);
             Log.d("param", key + "::" + val);
@@ -315,7 +376,7 @@ public class MainActivity extends AppCompatActivity {
         Log.d("template", template);
         return template;
     }
-    public void setIdPw(Hashtable<String, Hashtable<String, String>> htLogin, String club, String id, String pw) {
+    public void setIdPw(@NonNull Hashtable<String, Hashtable<String, String>> htLogin, String club, String id, String pw) {
         Hashtable<String, String> ht_island = new Hashtable<String, String>();
         ht_island.put("id", id);
         ht_island.put("pw", pw);

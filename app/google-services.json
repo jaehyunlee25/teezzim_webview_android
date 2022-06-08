@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "792077024984",
+    "project_id": "teezzim-webview-test",
+    "storage_bucket": "teezzim-webview-test.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:792077024984:android:696f3b63142d0053f0e1ad",
+        "android_client_info": {
+          "package_name": "com.mnemosyne.webviewtest"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "792077024984-lu1rj8ptt3ef1er7hojg7vc7e2op5f1t.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mnemosyne.webviewtest",
+            "certificate_hash": "95423ff8dc09b77f00caa625f49cc0892d79bccc"
+          }
+        },
+        {
+          "client_id": "792077024984-v7icomrlbkhrdje2vo1sf4ekuue8u9ht.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCEMcN2w-X_RL6edyQHGKWs3S1P1M9oOww"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "792077024984-v7icomrlbkhrdje2vo1sf4ekuue8u9ht.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
