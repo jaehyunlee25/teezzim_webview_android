@@ -3,10 +3,14 @@ package com.mnemosyne.webviewtest;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.ContentValues;
+import android.content.SharedPreferences;
+import android.content.res.AssetManager;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.NetworkOnMainThreadException;
 import android.util.Log;
 import android.view.View;
 import android.webkit.JavascriptInterface;
@@ -17,13 +21,13 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Spinner;
-import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.messaging.FirebaseMessaging;
 
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -31,9 +35,7 @@ import java.net.MalformedURLException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Hashtable;
 
 import org.json.JSONArray;
@@ -45,16 +47,37 @@ public class MainActivity extends AppCompatActivity {
     Button button;
     Button search;
     Spinner spinner;
-    String postURL;
-    String postParam;
     Hashtable<String, Hashtable<String, String>> htLogin;
+    SQLiteDatabase sqlite;
+    SharedPreferences spf;
     String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
+    String urlReservationHeader = "http://dev.mnemosyne.co.kr:1006/";
     // String urlHeader = "http://10.0.2.2:8080/";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        
+
+        // preference
+        spf = getSharedPreferences("DEVICE", MODE_PRIVATE);
+
+        //sqlite
+        AssetManager am = getAssets();
+        DBHelper dbhp = new DBHelper(this, "teezzim", 1);
+        sqlite = dbhp.getWritableDatabase();
+        String sqlSitedata = "";
+        try {
+            Log.d("sqlite", "drop table Sitedata!!!");
+            sqlite.execSQL("drop table if exists Sitedata");
+            sqlSitedata = getFile(am, "sqls/create/Sitedata.sql");
+            sqlite.execSQL(sqlSitedata);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        Log.d("sqlite", "Sitedata created!!!");
+
+
+
         // 웹뷰
         wView = (WebView) findViewById(R.id.wView);
         WebSettings ws = wView.getSettings();
@@ -94,6 +117,97 @@ public class MainActivity extends AppCompatActivity {
                     String token = task.getResult();
                     Log.d("Token", token);
 
+                    String UUID = spf.getString("UUID", "");
+                    Log.d("pref", "UUID: " + UUID);
+                    if(UUID.equals("")) {
+                        // #1. 서버 api를 호출하여 uuid를 받아온다.
+                        String param = "{\"token\": \"" + token + "\", \"type\": \"admin\"}";
+                        String url = urlReservationHeader + "api/reservation/newDevice";
+                        Log.d("pref", url + param);
+                        String strResult = getPostCall(url, param);
+                        // json parse
+                        JSONObject json;
+                        try {
+                            json = new JSONObject(strResult);
+                            UUID = json.getString("deviceUUID");
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                        // #2. 받아 온 uuid를 pref에 저장한다.
+                        SharedPreferences.Editor editor = spf.edit();
+                        editor.putString("UUID", UUID);
+                        editor.commit();
+                    }
+
+                    String prevToken = spf.getString("token", "");
+                    Log.d("pref", "prevToken: " + prevToken);
+                    if(!prevToken.equals(token)) {
+                        // #1. 서버 api를 호출한다.
+                        String url = urlReservationHeader + "api/reservation/newToken";
+                        String param = "{\"token\": \"" + token + "\", \"id\": \"" + UUID + "\"}";
+                        String strResult = getPostCall(url, param);
+                        // json parse
+                        JSONObject json;
+                        String code = "";
+                        try {
+                            json = new JSONObject(strResult);
+                            code = json.getString("resultCode");
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+
+                        if(code.equals("200")) {
+                            // #2. preference에 token을 입력한다.
+                            SharedPreferences.Editor editor = spf.edit();
+                            editor.putString("token", token);
+                            editor.commit();
+                        }
+                        Log.d("pref", "token not valid!!!");
+                    } else {
+                        Log.d("pref", "token valid!!!");
+                    }
+                    
+                    // 서버에서 삭제
+                    String clubUUID = "2ec1a5c2-e3eb-11ec-a93e-0242ac11000a";
+                    String param = "{\"golf_club_id\": \"" + clubUUID + "\", \"id\": \"" + UUID + "\"}";
+                    getPostCall(urlReservationHeader + "api/reservation/delGolfClubInDevice", param);
+
+                    clubUUID = "b0ed2419-e3e4-11ec-a93e-0242ac11000a";
+                    param = "{\"golf_club_id\": \"" + clubUUID + "\", \"id\": \"" + UUID + "\"}";
+                    getPostCall(urlReservationHeader + "api/reservation/delGolfClubInDevice", param);
+
+                    clubUUID = "45d852b4-e3d8-11ec-a93e-0242ac11000a";
+                    param = "{\"golf_club_id\": \"" + clubUUID + "\", \"id\": \"" + UUID + "\"}";
+                    getPostCall(urlReservationHeader + "api/reservation/delGolfClubInDevice", param);
+
+                    
+                    // 서버에 등록
+                    clubUUID = "2ec1a5c2-e3eb-11ec-a93e-0242ac11000a";
+                    param = "{\"golf_club_id\": \"" + clubUUID + "\", \"id\": \"" + UUID + "\"}";
+                    String strResult = getPostCall(urlReservationHeader + "api/reservation/newGolfClubInDevice", param);
+                    String code = getCodeFromResult(strResult);
+                    if(code.equals("200")) {
+                        // sqlite에 등록
+                        setInTable("e6eeccf1-e3e4-11ec-a93e-0242ac11000a","newrison","ilovegolf778",clubUUID);
+                    }
+                    clubUUID = "b0ed2419-e3e4-11ec-a93e-0242ac11000a";
+                    param = "{\"golf_club_id\": \"" + clubUUID + "\", \"id\": \"" + UUID + "\"}";
+                    strResult = getPostCall(urlReservationHeader + "api/reservation/newGolfClubInDevice", param);
+                    code = getCodeFromResult(strResult);
+                    if(code.equals("200")) {
+                        // sqlite에 등록
+                        setInTable("e6eeccf1-e3e4-11ec-a93e-0242ac11000a", "newrison", "ilovegolf778", clubUUID);
+                    }
+
+                    clubUUID = "45d852b4-e3d8-11ec-a93e-0242ac11000a";
+                    param = "{\"golf_club_id\": \"" + clubUUID + "\", \"id\": \"" + UUID + "\"}";
+                    strResult = getPostCall(urlReservationHeader + "api/reservation/newGolfClubInDevice", param);
+                    code = getCodeFromResult(strResult);
+                    if(code.equals("200")) {
+                        // sqlite에 등록
+                        setInTable("7377e629-e3d8-11ec-a93e-0242ac11000a", "newrison", "ya2ssarama!", clubUUID);
+                    }
+
                     // Log and toast
                     // String msg = getString(R.string.msg_token_fmt, token);
                     // Log.d("TAG", msg);
@@ -116,6 +230,40 @@ public class MainActivity extends AppCompatActivity {
 
         AndroidController ac = new AndroidController();
         wView.addJavascriptInterface(ac, "AndroidController");
+    }
+    public String getCodeFromResult(String strResult) {
+        // json parse
+        JSONObject json;
+        String code = "";
+        try {
+            json = new JSONObject(strResult);
+            code = json.getString("resultCode");
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return code;
+    };
+    public void setInTable(String Course, String Login_id, String Login_pw, String Club_id) {
+        ContentValues cvs = new ContentValues();
+        cvs.put("Course", Course);
+        cvs.put("Login_id", Login_id);
+        cvs.put("Login_pw", Login_pw);
+        cvs.put("Club_id", Club_id);
+        sqlite.insert("Sitedata", null, cvs);
+        Log.d("sqlite", Course + Login_id + Login_pw + Club_id);
+    };
+    public String getFile(AssetManager am, String filename) throws IOException {
+        InputStream is = am.open(filename);
+        InputStreamReader isr = new InputStreamReader(is);
+        BufferedReader reader = new BufferedReader(isr);
+        StringBuffer buffer = new StringBuffer();
+        String line = reader.readLine();
+        while(line != null) {
+            buffer.append(line+"\r\n");
+            line = reader.readLine();
+        }
+        String result = buffer.toString();
+        return result;
     }
     public class AndroidController {
         final public Handler handler = new Handler();
@@ -289,9 +437,7 @@ public class MainActivity extends AppCompatActivity {
         };
     };
     public String getPostCall(String url, String param) {
-        postURL = url;
-        postParam = param;
-        CallThread ct = new CallThread();
+        CallThread ct = new CallThread(url, param);
         ct.start();
         try {
             ct.join();
@@ -306,10 +452,16 @@ public class MainActivity extends AppCompatActivity {
         return strResult;
     };
     public class CallThread extends Thread {
+        private String threadUrl;
+        private String threadParam;
         private String Result;
+        public CallThread (String url, String param) {
+            threadUrl = url;
+            threadParam = param;
+        };
         public void run() {
             try{
-                URL testUrl = new URL(postURL);
+                URL testUrl = new URL(threadUrl);
                 HttpURLConnection urlConn = (HttpURLConnection) testUrl.openConnection();
 
                 // [2-1]. urlConn 설정.
@@ -320,12 +472,14 @@ public class MainActivity extends AppCompatActivity {
                 urlConn.setUseCaches(false);
                 urlConn.setRequestMethod("POST"); // URL 요청에 대한 메소드 설정 : POST.
                 urlConn.setRequestProperty("Accept-Charset", "UTF-8"); // Accept-Charset 설정.
-                urlConn.setRequestProperty("Context_Type", "application/x-www-form-urlencode");
+                urlConn.setRequestProperty("Accept", "application/json");
+                // urlConn.setRequestProperty("Context_Type", "application/x-www-form-urlencode");
+                urlConn.setRequestProperty("Content-Type", "application/json");
                 // urlConn.setRequestProperty("apikey", ""); // ""안에 apikey를 입력
 
 
                 // [2-2]. parameter 전달 및 데이터 읽어오기.
-                String strParams = postParam; //sbParams에 정리한 파라미터들을 스트링으로 저장. 예)id=id1&pw=123;
+                String strParams = threadParam; //sbParams에 정리한 파라미터들을 스트링으로 저장. 예)id=id1&pw=123;
                 OutputStream os = urlConn.getOutputStream();
                 os.write(strParams.getBytes("UTF-8")); // 출력 스트림에 출력.
                 os.flush(); // 출력 스트림을 플러시(비운다)하고 버퍼링 된 모든 출력 바이트를 강제 실행.
