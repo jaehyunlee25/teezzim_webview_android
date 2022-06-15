@@ -44,6 +44,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         Intent intent = new Intent(this, SearchActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.putExtra("club", rm.getData().get("club"));
+        intent.putExtra("club_id", rm.getData().get("club_id"));
         startActivity(intent);
 
     }

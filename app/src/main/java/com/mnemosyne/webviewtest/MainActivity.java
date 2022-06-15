@@ -3,7 +3,9 @@ package com.mnemosyne.webviewtest;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.app.AlertDialog;
 import android.content.ContentValues;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.database.Cursor;
@@ -13,7 +15,10 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
+import android.webkit.ConsoleMessage;
 import android.webkit.JavascriptInterface;
+import android.webkit.JsResult;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -34,10 +39,18 @@ import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Hashtable;
 
+import org.eclipse.paho.android.service.MqttAndroidClient;
+import org.eclipse.paho.client.mqttv3.DisconnectedBufferOptions;
+import org.eclipse.paho.client.mqttv3.IMqttActionListener;
+import org.eclipse.paho.client.mqttv3.IMqttToken;
+import org.eclipse.paho.client.mqttv3.MqttClient;
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.eclipse.paho.client.mqttv3.MqttException;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -51,7 +64,9 @@ public class MainActivity extends AppCompatActivity {
     SQLiteDatabase sqlite;
     SharedPreferences spf;
     String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
-    String urlReservationHeader = "http://dev.mnemosyne.co.kr:1006/";
+    String urlReservationHeader = "https://dev.mnemosyne.co.kr/";
+    MqttAndroidClient mqtt;
+    String urlMqtt = "tcp://dev.mnemosyne.co.kr:1883";
     // String urlHeader = "http://10.0.2.2:8080/";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,6 +75,10 @@ public class MainActivity extends AppCompatActivity {
 
         // preference
         spf = getSharedPreferences("DEVICE", MODE_PRIVATE);
+
+        // mqtt
+        mqtt = new MqttAndroidClient(this, urlMqtt, MqttClient.generateClientId());
+        setMqtt();
 
         //sqlite
         AssetManager am = getAssets();
@@ -76,12 +95,46 @@ public class MainActivity extends AppCompatActivity {
         }
         Log.d("sqlite", "Sitedata created!!!");
 
-
-
         // 웹뷰
         wView = (WebView) findViewById(R.id.wView);
         WebSettings ws = wView.getSettings();
         ws.setJavaScriptEnabled(true);
+        wView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onConsoleMessage(ConsoleMessage message) {
+                try{
+                    Log.d("mqtt", "mqtt webview log!!" + message.message());
+                    mqtt.publish("TZLOG", message.message().getBytes(StandardCharsets.UTF_8), 0, false );
+                } catch(MqttException e) {
+                    e.printStackTrace();
+                }
+                return super.onConsoleMessage(message);
+            }
+            @Override
+            public boolean onJsAlert(WebView view, String url, String message, final JsResult result) {
+                /*AlertDialog.Builder adb = new AlertDialog.Builder(MainActivity.this);
+
+                adb.setTitle("");
+                adb.setMessage(message);
+                adb.setPositiveButton(
+                    android.R.string.ok,
+                    new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            result.confirm();
+                        }
+                    }
+                );
+                adb.setCancelable(false);
+                AlertDialog ad = adb.create();
+                ad.show();*/
+                result.confirm();
+
+
+                return true;
+            }
+        });
+
 
         // 로그인 버튼
         button = (Button) findViewById(R.id.button);
@@ -231,6 +284,37 @@ public class MainActivity extends AppCompatActivity {
         AndroidController ac = new AndroidController();
         wView.addJavascriptInterface(ac, "AndroidController");
     }
+    public void setMqtt() {
+        IMqttToken token = null;
+        try{
+            MqttConnectOptions mcops = new MqttConnectOptions();
+            mcops.setCleanSession(false);
+            mcops.setAutomaticReconnect(true);
+            mcops.setWill("aaa", "i am going offline".getBytes(StandardCharsets.UTF_8), 1, true);
+
+            token = mqtt.connect(mcops);
+        } catch (MqttException e) {
+            e.printStackTrace();
+            return;
+        }
+        token.setActionCallback(new IMqttActionListener() {
+            @Override
+            public void onSuccess(IMqttToken asyncActionToken) {
+                DisconnectedBufferOptions disconnectedBufferOptions = new DisconnectedBufferOptions();
+                disconnectedBufferOptions.setBufferEnabled(true);
+                disconnectedBufferOptions.setBufferSize(100);
+                disconnectedBufferOptions.setPersistBuffer(true);
+                disconnectedBufferOptions.setDeleteOldestMessages(false);
+                mqtt.setBufferOpts(disconnectedBufferOptions);
+                Log.d("mqtt", "mqtt connection success!!");
+            }
+
+            @Override
+            public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
+                Log.e("mqtt", "Failure " + exception.toString());
+            }
+        });
+    };
     public String getCodeFromResult(String strResult) {
         // json parse
         JSONObject json;
@@ -361,11 +445,17 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 // params into template script
+                String deviceId = spf.getString("UUID", "");
+                String deviceToken = spf.getString("token", "");
                 Hashtable<String, String> params = new Hashtable<String, String>();
                 Hashtable<String, String> idpw = htLogin.get(clubEngName);
+
+                params.put("deviceId", deviceId);
+                params.put("deviceToken", deviceToken);
                 params.put("login_id", idpw.get("id"));
                 params.put("login_password", idpw.get("pw"));
                 String loginScript = setStringTemplate(params, scriptTemplate);
+                Log.d("login", loginScript);
 
                 WebViewClient wvc = getLoginWebviewClient(loginScript);
                 wView.setWebViewClient(wvc);
@@ -394,7 +484,14 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 // params into template script
-                String searchScript = scriptTemplate;
+                String deviceId = spf.getString("UUID", "");
+                String deviceToken = spf.getString("token", "");
+
+                Hashtable<String, String> params = new Hashtable<String, String>();
+                params.put("deviceId", deviceId);
+                params.put("deviceToken", deviceToken);
+
+                String searchScript = setStringTemplate(params, scriptTemplate);
                 Log.d("script", searchScript);
                 // String searchScript = "javascript:(() => {changeCoDiv(\"76\");})()";
 

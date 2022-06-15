@@ -3,17 +3,22 @@ package com.mnemosyne.webviewtest;
 import static java.lang.Thread.sleep;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.util.Log;
+import android.webkit.ConsoleMessage;
+import android.webkit.JsResult;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 import java.io.BufferedReader;
+import java.io.Console;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -21,6 +26,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -29,6 +35,13 @@ import java.util.Queue;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import org.eclipse.paho.android.service.MqttAndroidClient;
+import org.eclipse.paho.client.mqttv3.DisconnectedBufferOptions;
+import org.eclipse.paho.client.mqttv3.IMqttActionListener;
+import org.eclipse.paho.client.mqttv3.IMqttToken;
+import org.eclipse.paho.client.mqttv3.MqttClient;
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.eclipse.paho.client.mqttv3.MqttException;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -45,6 +58,9 @@ public class SearchActivity  extends AppCompatActivity {
     String searchScript = "(() => {})();";
     Hashtable<String, Hashtable<String, String>> htLogin;
     SQLiteDatabase sqlite;
+    SharedPreferences spf;
+    MqttAndroidClient mqtt;
+    String urlMqtt = "tcp://dev.mnemosyne.co.kr:1883";
     String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
     // String urlHeader = "http://10.0.2.2:8080/";
     @Override
@@ -54,15 +70,25 @@ public class SearchActivity  extends AppCompatActivity {
         // 상단 타이틀 변경
         setTitle("teezzim search by FCM");
 
+        // preference
+        spf = getSharedPreferences("DEVICE", MODE_PRIVATE);
+
+        // mqtt
+        mqtt = new MqttAndroidClient(this, urlMqtt, MqttClient.generateClientId());
+        setMqtt();
+
         // 로그인 관리자 계정
         String strAccountResult = getPostCall(urlHeader + "account", "{}");
         setLoginAdminAccount(strAccountResult);
+
         // 서비스로부터 자료 수신
         Intent service = getIntent();
         String clubEngName = service.getStringExtra("club");
+        String clubId = service.getStringExtra("club_id");
 
         String param = "{\"club\": \"" + clubEngName + "\"}";
         String strResult = getPostCall(urlHeader + "searchbot", param);
+        Log.d("script", strResult);
         // json parse
         JSONObject json;
         String scriptTemplate;
@@ -76,21 +102,79 @@ public class SearchActivity  extends AppCompatActivity {
         }
 
         // params into template script
-        searchScript = scriptTemplate;
+        String deviceId = spf.getString("UUID", "");
+        String deviceToken = spf.getString("token", "");
+        Hashtable<String, String> params = new Hashtable<String, String>();
+        params.put("deviceId", deviceId);
+        params.put("deviceToken", deviceToken);
+        params.put("golfClubId", clubId);
+        Log.d("extra", clubEngName + "::" + clubId);
+
+        searchScript = setStringTemplate(params, scriptTemplate);
 
         // 웹뷰
         wView = (WebView) findViewById(R.id.wView);
         WebSettings ws = wView.getSettings();
         ws.setJavaScriptEnabled(true);
 
+
         WebViewClient wvc = getSearchWebviewClient(searchScript);
         wView.setWebViewClient(wvc);
+        wView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onConsoleMessage(ConsoleMessage message) {
+                try{
+                    Log.d("mqtt", "mqtt webview log!!" + message.message());
+                    mqtt.publish("TZLOG", message.message().getBytes(StandardCharsets.UTF_8), 0, false );
+                    Log.d("mqtt", "mqtt webview log end!!" + message.message());
+                } catch(MqttException e) {
+                    e.printStackTrace();
+                }
+                return super.onConsoleMessage(message);
+            }
+            @Override
+            public boolean onJsAlert(WebView view, String url, String message, final JsResult result) {
+                result.confirm();
+                return true;
+            }
+        });
         wView.loadUrl(searchUrl);
 
         AndroidController ac = new AndroidController();
         wView.addJavascriptInterface(ac, "AndroidController");
 
     }
+    public void setMqtt() {
+        IMqttToken token = null;
+        try{
+            MqttConnectOptions mcops = new MqttConnectOptions();
+            mcops.setCleanSession(false);
+            mcops.setAutomaticReconnect(true);
+            mcops.setWill("aaa", "i am going offline".getBytes(StandardCharsets.UTF_8), 1, true);
+
+            token = mqtt.connect(mcops);
+        } catch (MqttException e) {
+            e.printStackTrace();
+            return;
+        }
+        token.setActionCallback(new IMqttActionListener() {
+            @Override
+            public void onSuccess(IMqttToken asyncActionToken) {
+                DisconnectedBufferOptions disconnectedBufferOptions = new DisconnectedBufferOptions();
+                disconnectedBufferOptions.setBufferEnabled(true);
+                disconnectedBufferOptions.setBufferSize(100);
+                disconnectedBufferOptions.setPersistBuffer(true);
+                disconnectedBufferOptions.setDeleteOldestMessages(false);
+                mqtt.setBufferOpts(disconnectedBufferOptions);
+                Log.d("mqtt", "mqtt connection success!!");
+            }
+
+            @Override
+            public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
+                Log.e("mqtt", "Failure " + exception.toString());
+            }
+        });
+    };
     public class AndroidController {
         final public Handler handler = new Handler();
         @JavascriptInterface
@@ -142,6 +226,13 @@ public class SearchActivity  extends AppCompatActivity {
                 Log.d("script", "search webview loaded!!");
                 view.loadUrl(searchScript);
                 super.onPageFinished(view, url);
+            }
+            public void onConsoleMessage(ConsoleMessage message) {
+                try{
+                    mqtt.publish("TZLOG", message.message().getBytes(StandardCharsets.UTF_8), 0, false );
+                } catch(MqttException e) {
+                    e.printStackTrace();
+                }
             }
         };
     };
