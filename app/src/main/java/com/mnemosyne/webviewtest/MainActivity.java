@@ -269,7 +269,7 @@ public class MainActivity extends AppCompatActivity {
             });
         FirebaseMessaging
             .getInstance()
-            .subscribeToTopic("search")
+            .subscribeToTopic("admin")
             .addOnCompleteListener(new OnCompleteListener<Void>() {
                 @Override
                 public void onComplete(@NonNull Task<Void> task) {
