@@ -140,6 +140,11 @@ public class ReserveCancelActivity extends AppCompatActivity {
                 result.confirm();
                 return true;
             }
+            @Override
+            public boolean onJsConfirm(WebView view, String url, String message, final JsResult result) {
+                result.confirm();
+                return true;
+            }
         });
         wView.loadUrl(searchUrl);
 
