@@ -6,6 +6,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.app.AlertDialog;
 import android.content.ContentValues;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.database.Cursor;
@@ -47,10 +48,12 @@ import java.util.Hashtable;
 import org.eclipse.paho.android.service.MqttAndroidClient;
 import org.eclipse.paho.client.mqttv3.DisconnectedBufferOptions;
 import org.eclipse.paho.client.mqttv3.IMqttActionListener;
+import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
 import org.eclipse.paho.client.mqttv3.IMqttToken;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
+import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -307,6 +310,66 @@ public class MainActivity extends AppCompatActivity {
                 disconnectedBufferOptions.setDeleteOldestMessages(false);
                 mqtt.setBufferOpts(disconnectedBufferOptions);
                 Log.d("mqtt", "mqtt connection success!!");
+
+                String UUID = spf.getString("UUID", "");
+                try {
+                    mqtt.subscribe(UUID, 0, new IMqttMessageListener() {
+                        Integer count = 0;
+                        @Override
+                        public void messageArrived(String topic, MqttMessage message) throws Exception {
+                            if(count == 0) {
+                                count = 1;
+                                return;
+                            }
+                            String mqttMessage = message.toString();
+                            Log.d("mqtt", mqttMessage);
+
+                            // json parse
+                            JSONObject json;
+                            String command = "";
+                            try {
+                                json = new JSONObject(mqttMessage);
+                                command = json.getString("command");
+                                Log.d("mqtt", command);
+                                Class act = SearchActivity.class;
+                                if(command.equals("search")){
+                                    Log.d("mqtt", "start search!!");
+                                }else if(command.equals("reserve")){
+                                    Log.d("mqtt", "start reserve!!");
+                                    act = ReserveActivity.class;
+                                }else if(command.equals("reserveSearch")) {
+                                    Log.d("mqtt", "start reserve search!!");
+                                    act = ReserveSearchActivity.class;
+                                }else if(command.equals("reserveCancel")) {
+                                    Log.d("mqtt", "start reserve cancel!!");
+                                    act = ReserveCancelActivity.class;
+                                }else{
+
+                                }
+
+                                Intent intent = new Intent(getApplicationContext(), act);
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                intent.putExtra("club", json.getString("club"));
+                                intent.putExtra("club_id", json.getString("club_id"));
+                                if(command.equals("reserve") || command.equals("reserveCancel")){
+                                    intent.putExtra("year", json.getString("year"));
+                                    intent.putExtra("month", json.getString("month"));
+                                    intent.putExtra("date", json.getString("date"));
+                                    intent.putExtra("course", json.getString("course"));
+                                    intent.putExtra("time", json.getString("time"));
+                                }
+                                startActivity(intent);
+
+                            } catch (JSONException e) {
+                                Log.d("mqtt", "mqtt json parse fail!!");
+                                e.printStackTrace();
+                            }
+                        }
+                    });
+                } catch (MqttException e) {
+                    Log.d("mqtt", "mqtt message listener exception!!");
+                    e.printStackTrace();
+                }
             }
 
             @Override
