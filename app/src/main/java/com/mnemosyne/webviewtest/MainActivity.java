@@ -102,38 +102,34 @@ public class MainActivity extends AppCompatActivity {
         wView = (WebView) findViewById(R.id.wView);
         WebSettings ws = wView.getSettings();
         ws.setJavaScriptEnabled(true);
+        ws.setDomStorageEnabled(true);
         wView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onConsoleMessage(ConsoleMessage message) {
                 try{
                     Log.d("mqtt", "mqtt webview log!!" + message.message());
-                    mqtt.publish("TZLOG", message.message().getBytes(StandardCharsets.UTF_8), 0, false );
+                    byte[] bts = message.message().getBytes(StandardCharsets.UTF_8);
+                    mqtt.publish("TZLOG", bts, 0, false );
+                    Log.d("mqtt", "mqtt webview log end!!" + message.message());
                 } catch(MqttException e) {
+                    Log.d("mqtt", "mqtt webview mqtt error!!" + message.message());
+                    e.printStackTrace();
+                } catch(Exception e) {
+                    Log.d("mqtt", "mqtt webview other error!!" + message.message());
                     e.printStackTrace();
                 }
                 return super.onConsoleMessage(message);
             }
             @Override
             public boolean onJsAlert(WebView view, String url, String message, final JsResult result) {
-                /*AlertDialog.Builder adb = new AlertDialog.Builder(MainActivity.this);
-
-                adb.setTitle("");
-                adb.setMessage(message);
-                adb.setPositiveButton(
-                    android.R.string.ok,
-                    new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            result.confirm();
-                        }
-                    }
-                );
-                adb.setCancelable(false);
-                AlertDialog ad = adb.create();
-                ad.show();*/
+                Log.d("jsLog", message);
                 result.confirm();
-
-
+                return true;
+            }
+            @Override
+            public boolean onJsConfirm(WebView view, String url, String message, final JsResult result) {
+                Log.d("jsConfirm", message);
+                result.confirm();
                 return true;
             }
         });

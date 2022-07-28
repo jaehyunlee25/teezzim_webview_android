@@ -87,7 +87,7 @@ public class SearchActivity extends AppCompatActivity {
         String clubId = service.getStringExtra("club_id");
 
         String param = "{\"club\": \"" + clubEngName + "\"}";
-        String strResult = getPostCall(urlHeader + "searchbot", param);
+        String strResult = getPostCall(urlHeader + "searchbot_admin", param);
         Log.d("script", strResult);
         // json parse
         JSONObject json;
@@ -116,6 +116,7 @@ public class SearchActivity extends AppCompatActivity {
         wView = (WebView) findViewById(R.id.wView);
         WebSettings ws = wView.getSettings();
         ws.setJavaScriptEnabled(true);
+        ws.setDomStorageEnabled(true);
 
         WebViewClient wvc = getSearchWebviewClient(searchScript);
         wView.setWebViewClient(wvc);
@@ -123,16 +124,28 @@ public class SearchActivity extends AppCompatActivity {
             @Override
             public boolean onConsoleMessage(ConsoleMessage message) {
                 try{
-                    Log.d("mqtt", "mqtt webview log!!" + message.message());
-                    mqtt.publish("TZLOG", message.message().getBytes(StandardCharsets.UTF_8), 0, false );
-                    Log.d("mqtt", "mqtt webview log end!!" + message.message());
+                    // Log.d("mqtt", "mqtt webview log!!" + message.message());
+                    byte[] bts = message.message().getBytes(StandardCharsets.UTF_8);
+                    mqtt.publish("TZLOG", bts, 0, false );
+                    // Log.d("mqtt", "mqtt webview log end!!" + message.message());
                 } catch(MqttException e) {
+                    Log.d("mqtt", "mqtt webview mqtt error!!" + message.message());
+                    e.printStackTrace();
+                } catch(Exception e) {
+                    Log.d("mqtt", "mqtt webview other error!!" + message.message());
                     e.printStackTrace();
                 }
                 return super.onConsoleMessage(message);
             }
             @Override
             public boolean onJsAlert(WebView view, String url, String message, final JsResult result) {
+                Log.d("jsLog", message);
+                result.confirm();
+                return true;
+            }
+            @Override
+            public boolean onJsConfirm(WebView view, String url, String message, final JsResult result) {
+                Log.d("jsConfirm", message);
                 result.confirm();
                 return true;
             }
