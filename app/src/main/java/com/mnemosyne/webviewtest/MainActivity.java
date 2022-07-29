@@ -273,7 +273,7 @@ public class MainActivity extends AppCompatActivity {
             .addOnCompleteListener(new OnCompleteListener<Void>() {
                 @Override
                 public void onComplete(@NonNull Task<Void> task) {
-                    String msg = "successful subscribe!";
+                    String msg = "admin successful subscribe!";
                     if(!task.isSuccessful()) {
                         msg = "subscribed failed!";
                     }
