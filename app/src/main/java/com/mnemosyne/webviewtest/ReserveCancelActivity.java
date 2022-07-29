@@ -1,36 +1,18 @@
 package com.mnemosyne.webviewtest;
 
-import static java.lang.Thread.sleep;
-
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.res.AssetManager;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.webkit.ConsoleMessage;
+import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-
-import java.io.BufferedReader;
-import java.io.Console;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.util.Hashtable;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Queue;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -42,33 +24,36 @@ import org.eclipse.paho.client.mqttv3.IMqttToken;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import android.os.Handler;
-import android.webkit.JavascriptInterface;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.Hashtable;
 
-public class SearchActivity extends AppCompatActivity {
+public class ReserveCancelActivity extends AppCompatActivity {
     WebView wView;
-    Queue<String> queue = new LinkedList<>();
+    SharedPreferences spf;
+    MqttAndroidClient mqtt;
     String postURL;
     String postParam;
     String searchUrl = "";
-    String searchScript = "(() => {})();";
-    Hashtable<String, Hashtable<String, String>> htLogin;
-    SQLiteDatabase sqlite;
-    SharedPreferences spf;
-    MqttAndroidClient mqtt;
+    String reserveCancelScript = "(() => {})();";
     String urlMqtt = "tcp://dev.mnemosyne.co.kr:1883";
     String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
-    // String urlHeader = "http://10.0.2.2:8080/";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_search);
+        setContentView(R.layout.activity_reserve_cancel);
+
         // 상단 타이틀 변경
-        setTitle("teezzim search by FCM");
+        setTitle("teezzim reserve cancel by MQTT");
 
         // preference
         spf = getSharedPreferences("DEVICE", MODE_PRIVATE);
@@ -77,17 +62,30 @@ public class SearchActivity extends AppCompatActivity {
         mqtt = new MqttAndroidClient(this, urlMqtt, MqttClient.generateClientId());
         setMqtt();
 
-        // 로그인 관리자 계정
-        String strAccountResult = getPostCall(urlHeader + "account", "{}");
-        setLoginAdminAccount(strAccountResult);
-
         // 서비스로부터 자료 수신
         Intent service = getIntent();
         String clubEngName = service.getStringExtra("club");
         String clubId = service.getStringExtra("club_id");
+        String year = service.getStringExtra("year");
+        String month = service.getStringExtra("month");
+        String date = service.getStringExtra("date");
+        String course = service.getStringExtra("course");
+        String time = service.getStringExtra("time");
 
-        String param = "{\"club\": \"" + clubEngName + "\"}";
-        String strResult = getPostCall(urlHeader + "searchbot_admin", param);
+        JSONObject prm = new JSONObject();
+        try {
+            prm.put("club", clubEngName);
+            prm.put("year", year);
+            prm.put("month", month);
+            prm.put("date", date);
+            prm.put("course", course);
+            prm.put("time", time);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        String param = prm.toString();
+        Log.d("reserve cancel", param);
+        String strResult = getPostCall(urlHeader + "reserveCancelbot_admin", param);
         Log.d("script", strResult);
         // json parse
         JSONObject json;
@@ -108,9 +106,15 @@ public class SearchActivity extends AppCompatActivity {
         params.put("deviceId", deviceId);
         params.put("deviceToken", deviceToken);
         params.put("golfClubId", clubId);
-        Log.d("extra", clubEngName + "::" + clubId);
+        params.put("year", year);
+        params.put("month", month);
+        params.put("date", date);
+        params.put("course", course);
+        params.put("time", time);
+        Log.d("reserve cancel", clubEngName + "::" + clubId);
 
-        searchScript = setStringTemplate(params, scriptTemplate);
+        reserveCancelScript = setStringTemplate(params, scriptTemplate);
+        Log.d("reserve cancel", reserveCancelScript);
 
         // 웹뷰
         wView = (WebView) findViewById(R.id.wView);
@@ -118,16 +122,16 @@ public class SearchActivity extends AppCompatActivity {
         ws.setJavaScriptEnabled(true);
         ws.setDomStorageEnabled(true);
 
-        WebViewClient wvc = getSearchWebviewClient(searchScript);
+        WebViewClient wvc = getSearchWebviewClient(reserveCancelScript);
         wView.setWebViewClient(wvc);
         wView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onConsoleMessage(ConsoleMessage message) {
                 try{
-                    // Log.d("mqtt", "mqtt webview log!!" + message.message());
+                    //Log.d("mqtt", "mqtt webview log!!" + message.message());
                     byte[] bts = message.message().getBytes(StandardCharsets.UTF_8);
                     mqtt.publish("TZLOG", bts, 0, false );
-                    // Log.d("mqtt", "mqtt webview log end!!" + message.message());
+                    //Log.d("mqtt", "mqtt webview log end!!" + message.message());
                 } catch(MqttException e) {
                     Log.d("mqtt", "mqtt webview mqtt error!!" + message.message());
                     e.printStackTrace();
@@ -152,9 +156,8 @@ public class SearchActivity extends AppCompatActivity {
         });
         wView.loadUrl(searchUrl);
 
-        AndroidController ac = new AndroidController();
+        ReserveCancelActivity.AndroidController ac = new ReserveCancelActivity.AndroidController();
         wView.addJavascriptInterface(ac, "AndroidController");
-
     }
     public void setMqtt() {
         IMqttToken token = null;
@@ -196,35 +199,27 @@ public class SearchActivity extends AppCompatActivity {
                 @Override
                 public void run() {
                     // wView.loadUrl("javascript:(() => { console.log('end'); })();");
-                    if(message.equals("end of procGolfSchedule!")) finish();
+                    if(message.equals("end of reserve/cancel")) finish();
                 }
             });
         };
     };
-    public void setLoginAdminAccount(String strAccountResult) {
-        // json parse
-        JSONObject jsonAccount;
-        JSONObject jsonClubs;
-        htLogin = new Hashtable<String, Hashtable<String, String>>();
+    public String getPostCall(String url, String param) {
+        postURL = url;
+        postParam = param;
+        ReserveCancelActivity.CallThread ct = new ReserveCancelActivity.CallThread();
+        ct.start();
         try {
-            jsonAccount = new JSONObject(strAccountResult);
-            // Log.d("accounts", jsonAccount.getString("accounts"));
-            jsonClubs = new JSONObject(jsonAccount.getString("accounts"));
-
-            Iterator iter = jsonClubs.keys();
-            while(iter.hasNext()) {
-                String club = (String) iter.next();
-                JSONObject val = (JSONObject) jsonClubs.get(club);
-                String id = (String) val.get("id");
-                String pw = (String) val.get("pw");
-                // Log.d("val", val.get("id") + "::" + val.get("pw"));
-                setIdPw(htLogin, club, id, pw);
-            }
-
-        } catch (JSONException e) {
+            ct.join();
+        } catch(Exception e) {
             e.printStackTrace();
-            return;
         }
+
+        // http response 수신
+        String strResult = ct.getResult();
+        // Log.d("RESULT", strResult);
+
+        return strResult;
     };
     public WebViewClient getSearchWebviewClient(String searchScript) {
         return new WebViewClient(){
@@ -246,32 +241,6 @@ public class SearchActivity extends AppCompatActivity {
                 }
             }
         };
-    };
-    public void goToSearch() {
-        Log.d("searchScript", searchScript);
-        Log.d("searchUrl", searchUrl);
-        // 큐에 자료 삽입
-        queue.add(searchScript);
-        wView.loadUrl(searchUrl);
-
-        //finish();
-    };
-    public String getPostCall(String url, String param) {
-        postURL = url;
-        postParam = param;
-        SearchActivity.CallThread ct = new SearchActivity.CallThread();
-        ct.start();
-        try {
-            ct.join();
-        } catch(Exception e) {
-            e.printStackTrace();
-        }
-
-        // http response 수신
-        String strResult = ct.getResult();
-        // Log.d("RESULT", strResult);
-
-        return strResult;
     };
     public class CallThread extends Thread {
         private String Result;
@@ -335,12 +304,6 @@ public class SearchActivity extends AppCompatActivity {
         public String getResult() {
             return this.Result;
         }
-    }
-    public void setIdPw(@NonNull Hashtable<String, Hashtable<String, String>> htLogin, String club, String id, String pw) {
-        Hashtable<String, String> ht_island = new Hashtable<String, String>();
-        ht_island.put("id", id);
-        ht_island.put("pw", pw);
-        htLogin.put(club, ht_island);
     }
     public String setStringTemplate(@NonNull Hashtable<String, String> params, String template) {
         for(String key:params.keySet()) {

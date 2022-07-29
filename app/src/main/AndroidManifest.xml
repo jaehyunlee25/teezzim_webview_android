@@ -25,6 +25,9 @@
             </intent-filter>
         </activity>
         <activity android:name=".SearchActivity" />
+        <activity android:name=".ReserveActivity" />
+        <activity android:name=".ReserveSearchActivity" />
+        <activity android:name=".ReserveCancelActivity" />
 
         <service
             android:name=".MyFirebaseMessagingService"
