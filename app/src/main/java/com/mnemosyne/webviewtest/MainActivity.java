@@ -62,6 +62,7 @@ public class MainActivity extends AppCompatActivity {
     WebView wView;
     Button button;
     Button search;
+    Button searchAll;
     Spinner spinner;
     Hashtable<String, Hashtable<String, String>> htLogin;
     SQLiteDatabase sqlite;
@@ -143,6 +144,10 @@ public class MainActivity extends AppCompatActivity {
         search = (Button) findViewById(R.id.btnSearch);
         initSearchButton();
 
+        // 서치 버튼
+        searchAll = (Button) findViewById(R.id.searchAll);
+        initSearchAllButton();
+
         // 스피너
         String strResult = getPostCall(urlHeader + "clubs", "{}");
         ArrayAdapter<String> clubs = getSpinnerAdapter(strResult);
@@ -218,7 +223,7 @@ public class MainActivity extends AppCompatActivity {
                     } else {
                         Log.d("pref", "token valid!!!");
                     }
-                    
+
                     // 서버에서 삭제
                     String clubUUID = "2ec1a5c2-e3eb-11ec-a93e-0242ac11000a";
                     String param = "{\"golf_club_id\": \"" + clubUUID + "\", \"id\": \"" + UUID + "\"}";
@@ -232,7 +237,7 @@ public class MainActivity extends AppCompatActivity {
                     param = "{\"golf_club_id\": \"" + clubUUID + "\", \"id\": \"" + UUID + "\"}";
                     getPostCall(urlReservationHeader + "api/reservation/delGolfClubInDevice", param);
 
-                    
+
                     // 서버에 등록
                     clubUUID = "2ec1a5c2-e3eb-11ec-a93e-0242ac11000a";
                     param = "{\"golf_club_id\": \"" + clubUUID + "\", \"id\": \"" + UUID + "\"}";
@@ -557,6 +562,16 @@ public class MainActivity extends AppCompatActivity {
                 WebViewClient wvc = getSearchWebviewClient(searchScript);
                 wView.setWebViewClient(wvc);
                 wView.loadUrl(searchUrl);
+            }
+        });
+    };
+    public void initSearchAllButton() {
+        searchAll.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Class act = SearchAll.class;
+                Intent intent = new Intent(getApplicationContext(), act);
+                startActivity(intent);
             }
         });
     };

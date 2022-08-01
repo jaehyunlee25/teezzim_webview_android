@@ -38,6 +38,31 @@
             android:text="Search">
         </Button>
     </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <Button
+            android:id="@+id/searchAll"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.4"
+            android:text="SearchAll">
+        </Button>
+        <TextView
+            android:gravity="center"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.01"
+            android:text="" />
+        <Button
+            android:id="@+id/noAction"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.4"
+            android:text="NO Action">
+        </Button>
+    </LinearLayout>
     <WebView
         android:id="@+id/wView"
         android:layout_width="match_parent"
