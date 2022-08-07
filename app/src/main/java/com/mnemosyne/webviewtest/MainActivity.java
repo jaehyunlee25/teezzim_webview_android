@@ -12,6 +12,7 @@ import android.content.res.AssetManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
+import android.net.http.SslError;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -19,6 +20,7 @@ import android.view.View;
 import android.webkit.ConsoleMessage;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
+import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -578,6 +580,10 @@ public class MainActivity extends AppCompatActivity {
     public WebViewClient getSearchWebviewClient(String searchScript) {
         return new WebViewClient(){
             @Override
+            public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                handler.proceed();
+            }
+            @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
             }
@@ -592,6 +598,10 @@ public class MainActivity extends AppCompatActivity {
     public WebViewClient getLoginWebviewClient(String loginScript) {
         return new WebViewClient(){
             int loginToggle = 1;
+            @Override
+            public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                handler.proceed();
+            }
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);

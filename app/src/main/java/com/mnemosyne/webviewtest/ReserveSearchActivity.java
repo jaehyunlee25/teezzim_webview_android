@@ -36,11 +36,13 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Hashtable;
+import java.util.Iterator;
 
 public class ReserveSearchActivity extends AppCompatActivity {
     WebView wView;
     SharedPreferences spf;
     MqttAndroidClient mqtt;
+    Hashtable<String, Hashtable<String, String>> htLogin;
     String postURL;
     String postParam;
     String reserveUrl = "";
@@ -88,13 +90,20 @@ public class ReserveSearchActivity extends AppCompatActivity {
             return;
         }
 
+        // 로그인 관리자 계정
+        String strAccountResult = getPostCall(urlHeader + "account", "{}");
+        setLoginAdminAccount(strAccountResult);
+
         // params into template script
         String deviceId = spf.getString("UUID", "");
         String deviceToken = spf.getString("token", "");
         Hashtable<String, String> params = new Hashtable<String, String>();
+        Hashtable<String, String> idpw = htLogin.get(clubEngName);
         params.put("deviceId", deviceId);
         params.put("deviceToken", deviceToken);
         params.put("golfClubId", clubId);
+        params.put("login_id", idpw.get("id"));
+        params.put("login_password", idpw.get("pw"));
 
         reserveSearchScript = setStringTemplate(params, scriptTemplate);
         Log.d("reserve", reserveSearchScript);
@@ -143,6 +152,37 @@ public class ReserveSearchActivity extends AppCompatActivity {
         wView.addJavascriptInterface(ac, "AndroidController");
 
     }
+    public void setLoginAdminAccount(String strAccountResult) {
+        // json parse
+        JSONObject jsonAccount;
+        JSONObject jsonClubs;
+        htLogin = new Hashtable<String, Hashtable<String, String>>();
+        try {
+            jsonAccount = new JSONObject(strAccountResult);
+            Log.d("accounts", jsonAccount.getString("accounts"));
+            jsonClubs = new JSONObject(jsonAccount.getString("accounts"));
+
+            Iterator iter = jsonClubs.keys();
+            while(iter.hasNext()) {
+                String club = (String) iter.next();
+                JSONObject val = (JSONObject) jsonClubs.get(club);
+                String id = (String) val.get("id");
+                String pw = (String) val.get("pw");
+                Log.d("val", val.get("id") + "::" + val.get("pw"));
+                setIdPw(htLogin, club, id, pw);
+            }
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return;
+        }
+    };
+    public void setIdPw(@NonNull Hashtable<String, Hashtable<String, String>> htLogin, String club, String id, String pw) {
+        Hashtable<String, String> ht_island = new Hashtable<String, String>();
+        ht_island.put("id", id);
+        ht_island.put("pw", pw);
+        htLogin.put(club, ht_island);
+    }
     public void setMqtt() {
         IMqttToken token = null;
         try{
@@ -184,6 +224,7 @@ public class ReserveSearchActivity extends AppCompatActivity {
                 public void run() {
                     // wView.loadUrl("javascript:(() => { console.log('end'); })();");
                     if(message.equals("end of reserve/search")) finish();
+                    if(message.equals("TZ_MSG_IC")) finish();
                 }
             });
         };
