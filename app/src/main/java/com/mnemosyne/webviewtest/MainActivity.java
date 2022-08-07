@@ -12,6 +12,7 @@ import android.content.res.AssetManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
+import android.net.http.SslError;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -19,6 +20,7 @@ import android.view.View;
 import android.webkit.ConsoleMessage;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
+import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -62,6 +64,7 @@ public class MainActivity extends AppCompatActivity {
     WebView wView;
     Button button;
     Button search;
+    Button searchAll;
     Spinner spinner;
     Hashtable<String, Hashtable<String, String>> htLogin;
     SQLiteDatabase sqlite;
@@ -143,6 +146,10 @@ public class MainActivity extends AppCompatActivity {
         search = (Button) findViewById(R.id.btnSearch);
         initSearchButton();
 
+        // 서치 버튼
+        searchAll = (Button) findViewById(R.id.searchAll);
+        initSearchAllButton();
+
         // 스피너
         String strResult = getPostCall(urlHeader + "clubs", "{}");
         ArrayAdapter<String> clubs = getSpinnerAdapter(strResult);
@@ -218,7 +225,7 @@ public class MainActivity extends AppCompatActivity {
                     } else {
                         Log.d("pref", "token valid!!!");
                     }
-                    
+
                     // 서버에서 삭제
                     String clubUUID = "2ec1a5c2-e3eb-11ec-a93e-0242ac11000a";
                     String param = "{\"golf_club_id\": \"" + clubUUID + "\", \"id\": \"" + UUID + "\"}";
@@ -232,7 +239,7 @@ public class MainActivity extends AppCompatActivity {
                     param = "{\"golf_club_id\": \"" + clubUUID + "\", \"id\": \"" + UUID + "\"}";
                     getPostCall(urlReservationHeader + "api/reservation/delGolfClubInDevice", param);
 
-                    
+
                     // 서버에 등록
                     clubUUID = "2ec1a5c2-e3eb-11ec-a93e-0242ac11000a";
                     param = "{\"golf_club_id\": \"" + clubUUID + "\", \"id\": \"" + UUID + "\"}";
@@ -560,8 +567,22 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     };
+    public void initSearchAllButton() {
+        searchAll.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Class act = SearchAll.class;
+                Intent intent = new Intent(getApplicationContext(), act);
+                startActivity(intent);
+            }
+        });
+    };
     public WebViewClient getSearchWebviewClient(String searchScript) {
         return new WebViewClient(){
+            @Override
+            public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                handler.proceed();
+            }
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
@@ -577,6 +598,10 @@ public class MainActivity extends AppCompatActivity {
     public WebViewClient getLoginWebviewClient(String loginScript) {
         return new WebViewClient(){
             int loginToggle = 1;
+            @Override
+            public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                handler.proceed();
+            }
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);

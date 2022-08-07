@@ -8,10 +8,12 @@ import android.content.res.AssetManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
+import android.net.http.SslError;
 import android.os.Bundle;
 import android.util.Log;
 import android.webkit.ConsoleMessage;
 import android.webkit.JsResult;
+import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -105,9 +107,12 @@ public class SearchActivity extends AppCompatActivity {
         String deviceId = spf.getString("UUID", "");
         String deviceToken = spf.getString("token", "");
         Hashtable<String, String> params = new Hashtable<String, String>();
+        Hashtable<String, String> idpw = htLogin.get(clubEngName);
         params.put("deviceId", deviceId);
         params.put("deviceToken", deviceToken);
         params.put("golfClubId", clubId);
+        params.put("login_id", idpw.get("id"));
+        params.put("login_password", idpw.get("pw"));
         Log.d("extra", clubEngName + "::" + clubId);
 
         searchScript = setStringTemplate(params, scriptTemplate);
@@ -140,12 +145,36 @@ public class SearchActivity extends AppCompatActivity {
             @Override
             public boolean onJsAlert(WebView view, String url, String message, final JsResult result) {
                 Log.d("jsLog", message);
+                try{
+                    //Log.d("mqtt", "mqtt webview log!!" + message.message());
+                    byte[] bts = message.getBytes(StandardCharsets.UTF_8);
+                    mqtt.publish("TZLOG", bts, 0, false );
+                    //Log.d("mqtt", "mqtt webview log end!!" + message.message());
+                } catch(MqttException e) {
+                    Log.d("mqtt", "mqtt webview mqtt error!!" + message);
+                    e.printStackTrace();
+                } catch(Exception e) {
+                    Log.d("mqtt", "onJsAlert error!!" + message);
+                    e.printStackTrace();
+                }
                 result.confirm();
                 return true;
             }
             @Override
             public boolean onJsConfirm(WebView view, String url, String message, final JsResult result) {
                 Log.d("jsConfirm", message);
+                try{
+                    //Log.d("mqtt", "mqtt webview log!!" + message.message());
+                    byte[] bts = message.getBytes(StandardCharsets.UTF_8);
+                    mqtt.publish("TZLOG", bts, 0, false );
+                    //Log.d("mqtt", "mqtt webview log end!!" + message.message());
+                } catch(MqttException e) {
+                    Log.d("mqtt", "mqtt webview mqtt error!!" + message);
+                    e.printStackTrace();
+                } catch(Exception e) {
+                    Log.d("mqtt", "onJsConfirm error!!" + message);
+                    e.printStackTrace();
+                }
                 result.confirm();
                 return true;
             }
@@ -228,6 +257,10 @@ public class SearchActivity extends AppCompatActivity {
     };
     public WebViewClient getSearchWebviewClient(String searchScript) {
         return new WebViewClient(){
+            @Override
+            public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                handler.proceed();
+            }
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);

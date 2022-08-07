@@ -3,12 +3,14 @@ package com.mnemosyne.webviewtest;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.net.http.SslError;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.webkit.ConsoleMessage;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
+import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -36,11 +38,13 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Hashtable;
+import java.util.Iterator;
 
 public class ReserveCancelActivity extends AppCompatActivity {
     WebView wView;
     SharedPreferences spf;
     MqttAndroidClient mqtt;
+    Hashtable<String, Hashtable<String, String>> htLogin;
     String postURL;
     String postParam;
     String searchUrl = "";
@@ -99,10 +103,15 @@ public class ReserveCancelActivity extends AppCompatActivity {
             return;
         }
 
+        // 로그인 관리자 계정
+        String strAccountResult = getPostCall(urlHeader + "account", "{}");
+        setLoginAdminAccount(strAccountResult);
+
         // params into template script
         String deviceId = spf.getString("UUID", "");
         String deviceToken = spf.getString("token", "");
         Hashtable<String, String> params = new Hashtable<String, String>();
+        Hashtable<String, String> idpw = htLogin.get(clubEngName);
         params.put("deviceId", deviceId);
         params.put("deviceToken", deviceToken);
         params.put("golfClubId", clubId);
@@ -111,6 +120,8 @@ public class ReserveCancelActivity extends AppCompatActivity {
         params.put("date", date);
         params.put("course", course);
         params.put("time", time);
+        params.put("login_id", idpw.get("id"));
+        params.put("login_password", idpw.get("pw"));
         Log.d("reserve cancel", clubEngName + "::" + clubId);
 
         reserveCancelScript = setStringTemplate(params, scriptTemplate);
@@ -144,12 +155,36 @@ public class ReserveCancelActivity extends AppCompatActivity {
             @Override
             public boolean onJsAlert(WebView view, String url, String message, final JsResult result) {
                 Log.d("jsLog", message);
+                try{
+                    //Log.d("mqtt", "mqtt webview log!!" + message.message());
+                    byte[] bts = message.getBytes(StandardCharsets.UTF_8);
+                    mqtt.publish("TZLOG", bts, 0, false );
+                    //Log.d("mqtt", "mqtt webview log end!!" + message.message());
+                } catch(MqttException e) {
+                    Log.d("mqtt", "mqtt webview mqtt error!!" + message);
+                    e.printStackTrace();
+                } catch(Exception e) {
+                    Log.d("mqtt", "onJsAlert error!!" + message);
+                    e.printStackTrace();
+                }
                 result.confirm();
                 return true;
             }
             @Override
             public boolean onJsConfirm(WebView view, String url, String message, final JsResult result) {
                 Log.d("jsConfirm", message);
+                try{
+                    //Log.d("mqtt", "mqtt webview log!!" + message.message());
+                    byte[] bts = message.getBytes(StandardCharsets.UTF_8);
+                    mqtt.publish("TZLOG", bts, 0, false );
+                    //Log.d("mqtt", "mqtt webview log end!!" + message.message());
+                } catch(MqttException e) {
+                    Log.d("mqtt", "mqtt webview mqtt error!!" + message);
+                    e.printStackTrace();
+                } catch(Exception e) {
+                    Log.d("mqtt", "onJsConfirm error!!" + message);
+                    e.printStackTrace();
+                }
                 result.confirm();
                 return true;
             }
@@ -158,6 +193,37 @@ public class ReserveCancelActivity extends AppCompatActivity {
 
         ReserveCancelActivity.AndroidController ac = new ReserveCancelActivity.AndroidController();
         wView.addJavascriptInterface(ac, "AndroidController");
+    }
+    public void setLoginAdminAccount(String strAccountResult) {
+        // json parse
+        JSONObject jsonAccount;
+        JSONObject jsonClubs;
+        htLogin = new Hashtable<String, Hashtable<String, String>>();
+        try {
+            jsonAccount = new JSONObject(strAccountResult);
+            Log.d("accounts", jsonAccount.getString("accounts"));
+            jsonClubs = new JSONObject(jsonAccount.getString("accounts"));
+
+            Iterator iter = jsonClubs.keys();
+            while(iter.hasNext()) {
+                String club = (String) iter.next();
+                JSONObject val = (JSONObject) jsonClubs.get(club);
+                String id = (String) val.get("id");
+                String pw = (String) val.get("pw");
+                Log.d("val", val.get("id") + "::" + val.get("pw"));
+                setIdPw(htLogin, club, id, pw);
+            }
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return;
+        }
+    };
+    public void setIdPw(@NonNull Hashtable<String, Hashtable<String, String>> htLogin, String club, String id, String pw) {
+        Hashtable<String, String> ht_island = new Hashtable<String, String>();
+        ht_island.put("id", id);
+        ht_island.put("pw", pw);
+        htLogin.put(club, ht_island);
     }
     public void setMqtt() {
         IMqttToken token = null;
@@ -223,6 +289,10 @@ public class ReserveCancelActivity extends AppCompatActivity {
     };
     public WebViewClient getSearchWebviewClient(String searchScript) {
         return new WebViewClient(){
+            @Override
+            public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                handler.proceed();
+            }
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
