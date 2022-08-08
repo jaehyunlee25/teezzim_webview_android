@@ -2,6 +2,7 @@ package com.mnemosyne.webviewtest;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
 import android.net.http.SslError;
@@ -23,6 +24,13 @@ import android.widget.LinearLayout;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import org.eclipse.paho.android.service.MqttAndroidClient;
+import org.eclipse.paho.client.mqttv3.DisconnectedBufferOptions;
+import org.eclipse.paho.client.mqttv3.IMqttActionListener;
+import org.eclipse.paho.client.mqttv3.IMqttToken;
+import org.eclipse.paho.client.mqttv3.MqttClient;
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.eclipse.paho.client.mqttv3.MqttException;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -34,32 +42,47 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 
-public class ReserveSearchAll extends AppCompatActivity {
+public class SearchAll extends AppCompatActivity {
     LinearLayout layout;
-    SharedPreferences spf;
-    String reserveUrl = "";
-    String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
-    Integer callback_count = 0;
+    WebView wView;
+    Queue<String> queue = new LinkedList<>();
+    String postURL;
+    String postParam;
+    String searchUrl = "";
+    String searchScript = "(() => {})();";
     Hashtable<String, Hashtable<String, String>> htLogin;
+    SQLiteDatabase sqlite;
+    SharedPreferences spf;
+    MqttAndroidClient mqtt;
     Hashtable<String, String> callbackClubs;
 
+    String urlMqtt = "tcp://dev.mnemosyne.co.kr:1883";
+    String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
+    Integer callback_count = 0;
+    // String urlHeader = "http://10.0.2.2:8080/";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.reserve_search_all);
-
+        setContentView(R.layout.search_all);
         // 상단 타이틀 변경
-        setTitle("teezzim multi dynamic webview");
+        setTitle("teezzim search by FCM");
 
         // preference
         spf = getSharedPreferences("DEVICE", MODE_PRIVATE);
+
+        // mqtt
+        mqtt = new MqttAndroidClient(this, urlMqtt, MqttClient.generateClientId());
+        setMqtt();
 
         // 로그인 관리자 계정
         String strAccountResult = getPostCall(urlHeader + "account", "{}");
@@ -73,16 +96,10 @@ public class ReserveSearchAll extends AppCompatActivity {
         strClubs = strClubs.replaceAll("\"", "");
         Log.d("clubs", strClubs);
         List<String> arrClubs = new ArrayList<String>(Arrays.asList(strClubs.split(",")));
-        Log.d("clubs", arrClubs.toString());
+        Log.d("TZ_CLUBS", arrClubs.toString());
         callbackClubs = new Hashtable<String, String>();
 
         layout = findViewById(R.id.cover);
-        /*List<String> arrClubs = Arrays.asList(
-                "360cc", "acro", "adelscott", "adonis", "allday",
-                "alpensia", "alpsdy", "andonglake", "aramir", "ariji",
-                "arista", "arumdaun", "asecovalley", "baekje", "base",
-                "bavista", "baystars", "beache", "beaconhills", "bearsbest"
-        );*/
         JSONObject prm = new JSONObject();
         JSONArray arr = new JSONArray();
         try {
@@ -95,18 +112,22 @@ public class ReserveSearchAll extends AppCompatActivity {
             e.printStackTrace();
         }
         String param = prm.toString();
-        String strResult = getPostCall(urlHeader + "reserveSearchbots_admin", param);
+        String strResult = getPostCall(urlHeader + "searchbots_admin", param);
 
+        // json parse
         JSONObject json;
         JSONObject scripts;
         JSONObject urls;
         JSONObject UUIDs;
+
+        Log.d("TZ_LENGTH", strResult);
         try {
             json = new JSONObject(strResult);
 
             scripts = new JSONObject(json.getString("scripts"));
             urls = new JSONObject(json.getString("urls"));
             UUIDs = new JSONObject(json.getString("ids"));
+
 
             Log.d("clubs", json.getString("scripts"));
             Log.d("clubs", json.getString("urls"));
@@ -144,35 +165,47 @@ public class ReserveSearchAll extends AppCompatActivity {
             }
         }
     }
-    public void setLoginAdminAccount(String strAccountResult) {
-        // json parse
-        JSONObject jsonAccount;
-        JSONObject jsonClubs;
-        htLogin = new Hashtable<String, Hashtable<String, String>>();
-        try {
-            jsonAccount = new JSONObject(strAccountResult);
-            Log.d("accounts", jsonAccount.getString("accounts"));
-            jsonClubs = new JSONObject(jsonAccount.getString("accounts"));
+    public void setMqtt() {
+        IMqttToken token = null;
+        try{
+            MqttConnectOptions mcops = new MqttConnectOptions();
+            mcops.setCleanSession(false);
+            mcops.setAutomaticReconnect(true);
+            mcops.setWill("aaa", "i am going offline".getBytes(StandardCharsets.UTF_8), 1, true);
 
-            Iterator iter = jsonClubs.keys();
-            while(iter.hasNext()) {
-                String club = (String) iter.next();
-                JSONObject val = (JSONObject) jsonClubs.get(club);
-                String id = (String) val.get("id");
-                String pw = (String) val.get("pw");
-                Log.d("val", val.get("id") + "::" + val.get("pw"));
-                setIdPw(htLogin, club, id, pw);
-            }
-
-        } catch (JSONException e) {
+            token = mqtt.connect(mcops);
+        } catch (MqttException e) {
             e.printStackTrace();
             return;
         }
+        token.setActionCallback(new IMqttActionListener() {
+            @Override
+            public void onSuccess(IMqttToken asyncActionToken) {
+                DisconnectedBufferOptions disconnectedBufferOptions = new DisconnectedBufferOptions();
+                disconnectedBufferOptions.setBufferEnabled(true);
+                disconnectedBufferOptions.setBufferSize(100);
+                disconnectedBufferOptions.setPersistBuffer(true);
+                disconnectedBufferOptions.setDeleteOldestMessages(false);
+                mqtt.setBufferOpts(disconnectedBufferOptions);
+                Log.d("mqtt", "mqtt connection success!!");
+            }
+
+            @Override
+            public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
+                Log.e("mqtt", "Failure " + exception.toString());
+            }
+        });
     };
     public void setWebView(WebView wv, String club, String script) {
         Log.d("MSG", club);
         WindowManager windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-        WindowManager.LayoutParams params = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, PixelFormat.TRANSLUCENT);
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+            PixelFormat.TRANSLUCENT
+        );
         params.gravity = Gravity.TOP | Gravity.LEFT;
         params.x = 0;
         params.y = 0;
@@ -238,7 +271,7 @@ public class ReserveSearchAll extends AppCompatActivity {
             handler.post(new Runnable() {
                 @Override
                 public void run() {
-                    if(message.equals("end of reserve/search")) {
+                    if(message.equals("end of procGolfSchedule!")) {
                         callback_count++;
                         Log.d("callback", "normal: " + CLUB + " : " + callback_count);
                         callbackClubs.put(CLUB, "normal");
@@ -267,8 +300,35 @@ public class ReserveSearchAll extends AppCompatActivity {
             });
         };
     };
+    public void setLoginAdminAccount(String strAccountResult) {
+        // json parse
+        JSONObject jsonAccount;
+        JSONObject jsonClubs;
+        htLogin = new Hashtable<String, Hashtable<String, String>>();
+        try {
+            jsonAccount = new JSONObject(strAccountResult);
+            // Log.d("accounts", jsonAccount.getString("accounts"));
+            jsonClubs = new JSONObject(jsonAccount.getString("accounts"));
+
+            Iterator iter = jsonClubs.keys();
+            while(iter.hasNext()) {
+                String club = (String) iter.next();
+                JSONObject val = (JSONObject) jsonClubs.get(club);
+                String id = (String) val.get("id");
+                String pw = (String) val.get("pw");
+                // Log.d("val", val.get("id") + "::" + val.get("pw"));
+                setIdPw(htLogin, club, id, pw);
+            }
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return;
+        }
+    };
     public String getPostCall(String url, String param) {
-        CallThread ct = new CallThread(url, param);
+        postURL = url;
+        postParam = param;
+        SearchAll.CallThread ct = new SearchAll.CallThread();
         ct.start();
         try {
             ct.join();
@@ -278,26 +338,20 @@ public class ReserveSearchAll extends AppCompatActivity {
 
         // http response 수신
         String strResult = ct.getResult();
-        Log.d("RESULT", strResult);
+        // Log.d("RESULT", strResult);
 
         return strResult;
     };
     public class CallThread extends Thread {
-        private String threadUrl;
-        private String threadParam;
         private String Result;
-        public CallThread (String url, String param) {
-            threadUrl = url;
-            threadParam = param;
-        };
         public void run() {
             try{
-                URL testUrl = new URL(threadUrl);
+                URL testUrl = new URL(postURL);
                 HttpURLConnection urlConn = (HttpURLConnection) testUrl.openConnection();
 
                 // [2-1]. urlConn 설정.
                 urlConn.setConnectTimeout(15000);
-                urlConn.setReadTimeout(5000);
+                urlConn.setReadTimeout(10000);
                 urlConn.setDoInput(true);
                 urlConn.setDoOutput(true);
                 urlConn.setUseCaches(false);
@@ -310,7 +364,7 @@ public class ReserveSearchAll extends AppCompatActivity {
 
 
                 // [2-2]. parameter 전달 및 데이터 읽어오기.
-                String strParams = threadParam; //sbParams에 정리한 파라미터들을 스트링으로 저장. 예)id=id1&pw=123;
+                String strParams = postParam; //sbParams에 정리한 파라미터들을 스트링으로 저장. 예)id=id1&pw=123;
                 OutputStream os = urlConn.getOutputStream();
                 os.write(strParams.getBytes("UTF-8")); // 출력 스트림에 출력.
                 os.flush(); // 출력 스트림을 플러시(비운다)하고 버퍼링 된 모든 출력 바이트를 강제 실행.

@@ -343,6 +343,9 @@ public class MainActivity extends AppCompatActivity {
                                 }else if(command.equals("reserveSearchAll")) {
                                     Log.d("mqtt", "start reserve search all!!");
                                     act = ReserveSearchAll.class;
+                                }else if(command.equals("searchAll")) {
+                                    Log.d("mqtt", "start search all!!");
+                                    act = SearchAll.class;
                                 }else if(command.equals("reserveCancel")) {
                                     Log.d("mqtt", "start reserve cancel!!");
                                     act = ReserveCancelActivity.class;
@@ -361,6 +364,8 @@ public class MainActivity extends AppCompatActivity {
                                     intent.putExtra("course", json.getString("course"));
                                     intent.putExtra("time", json.getString("time"));
                                 } else if(command.equals("reserveSearchAll")){
+                                    intent.putExtra("clubs", json.getString("clubs"));
+                                } else if(command.equals("searchAll")){
                                     intent.putExtra("clubs", json.getString("clubs"));
                                 }
                                 startActivity(intent);
