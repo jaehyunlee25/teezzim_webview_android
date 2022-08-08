@@ -50,7 +50,8 @@ public class ReserveActivity extends AppCompatActivity {
     String searchUrl = "";
     String reserveScript = "(() => {})();";
     String urlMqtt = "tcp://dev.mnemosyne.co.kr:1883";
-    String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
+    // String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
+    String urlHeader = "http://dev.mnemosyne.co.kr:1009/";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

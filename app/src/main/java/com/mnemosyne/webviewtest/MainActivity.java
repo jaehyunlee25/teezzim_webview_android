@@ -66,7 +66,8 @@ public class MainActivity extends AppCompatActivity {
     Hashtable<String, Hashtable<String, String>> htLogin;
     SQLiteDatabase sqlite;
     SharedPreferences spf;
-    String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
+    //String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
+    String urlHeader = "http://dev.mnemosyne.co.kr:1009/";
     String urlReservationHeader = "https://dev.mnemosyne.co.kr/";
     MqttAndroidClient mqtt;
     String urlMqtt = "tcp://dev.mnemosyne.co.kr:1883";

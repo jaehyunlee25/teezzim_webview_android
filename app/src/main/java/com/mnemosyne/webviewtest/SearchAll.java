@@ -67,7 +67,8 @@ public class SearchAll extends AppCompatActivity {
     Hashtable<String, String> callbackClubs;
 
     String urlMqtt = "tcp://dev.mnemosyne.co.kr:1883";
-    String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
+    // String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
+    String urlHeader = "http://dev.mnemosyne.co.kr:1009/";
     Integer callback_count = 0;
     // String urlHeader = "http://10.0.2.2:8080/";
     @Override

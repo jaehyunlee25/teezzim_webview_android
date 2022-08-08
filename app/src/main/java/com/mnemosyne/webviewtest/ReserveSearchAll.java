@@ -45,7 +45,8 @@ public class ReserveSearchAll extends AppCompatActivity {
     LinearLayout layout;
     SharedPreferences spf;
     String reserveUrl = "";
-    String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
+    //String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
+    String urlHeader = "http://dev.mnemosyne.co.kr:1009/";
     Integer callback_count = 0;
     Hashtable<String, Hashtable<String, String>> htLogin;
     Hashtable<String, String> callbackClubs;
