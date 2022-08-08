@@ -3,10 +3,13 @@ package com.mnemosyne.webviewtest;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.graphics.PixelFormat;
 import android.net.http.SslError;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.WindowManager;
 import android.webkit.ConsoleMessage;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
@@ -35,18 +38,19 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
 
-public class SearchAll extends AppCompatActivity {
+public class ReserveSearchAll extends AppCompatActivity {
     LinearLayout layout;
     SharedPreferences spf;
     String reserveUrl = "";
     String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
     Integer callback_count = 0;
     Hashtable<String, Hashtable<String, String>> htLogin;
-    ArrayList<String> callbackClubs = new ArrayList<String>();
+    Hashtable<String, String> callbackClubs;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,17 +67,29 @@ public class SearchAll extends AppCompatActivity {
         String strAccountResult = getPostCall(urlHeader + "account", "{}");
         setLoginAdminAccount(strAccountResult);
 
+        // 서비스로부터 자료 수신
+        Intent service = getIntent();
+        String strClubs = service.getStringExtra("clubs");
+        Log.d("clubs", strClubs);
+        strClubs = strClubs.substring(1, strClubs.length() - 1);
+        strClubs = strClubs.replaceAll("\"", "");
+        Log.d("clubs", strClubs);
+        List<String> arrClubs = new ArrayList<String>(Arrays.asList(strClubs.split(",")));
+        Log.d("clubs", arrClubs.toString());
+        callbackClubs = new Hashtable<String, String>();
+
         layout = findViewById(R.id.cover);
-        List<String> arrClubs = Arrays.asList(
+        /*List<String> arrClubs = Arrays.asList(
                 "360cc", "acro", "adelscott", "adonis", "allday",
                 "alpensia", "alpsdy", "andonglake", "aramir", "ariji",
                 "arista", "arumdaun", "asecovalley", "baekje", "base",
                 "bavista", "baystars", "beache", "beaconhills", "bearsbest"
-        );
+        );*/
         JSONObject prm = new JSONObject();
         JSONArray arr = new JSONArray();
         try {
             for(int i = 0; i < arrClubs.size(); i++) {
+                callbackClubs.put(arrClubs.get(i), "");
                 arr.put(arrClubs.get(i));
             }
             prm.put("clubs", arr);
@@ -157,6 +173,14 @@ public class SearchAll extends AppCompatActivity {
     };
     public void setWebView(WebView wv, String club, String script) {
         Log.d("MSG", club);
+        WindowManager windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, PixelFormat.TRANSLUCENT);
+        params.gravity = Gravity.TOP | Gravity.LEFT;
+        params.x = 0;
+        params.y = 0;
+        params.width = 10;
+        params.height = 10;
+        wv.setLayoutParams(params);
         WebSettings ws = wv.getSettings();
         ws.setJavaScriptEnabled(true);
         ws.setDomStorageEnabled(true);
@@ -171,7 +195,7 @@ public class SearchAll extends AppCompatActivity {
             }
             @Override
             public void onPageFinished(WebView view, String url) {
-                Log.d("jsLog", script + " :: " + club);
+                // Log.d("jsLog", script + " :: " + club);
                 view.loadUrl(script);
                 super.onPageFinished(view, url);
             }
@@ -219,18 +243,25 @@ public class SearchAll extends AppCompatActivity {
                     if(message.equals("end of reserve/search")) {
                         callback_count++;
                         Log.d("callback", "normal: " + CLUB + " : " + callback_count);
-                        callbackClubs.add("normal : " + CLUB);
-                        for (int i = 0; i < callbackClubs.size(); i++) {
-                            Log.d("callback", callbackClubs.get(i));
+                        callbackClubs.put(CLUB, "normal");
+
+                        Enumeration<String> enumKey = callbackClubs.keys();
+                        while(enumKey.hasMoreElements()){
+                            String key = enumKey.nextElement();
+                            String val = callbackClubs.get(key);
+                            Log.d("clubs", key + " : " + val);
                         }
                         layout.removeView(WEBVIEW);
                     }
                     if(message.equals("TZ_MSG_IC")) {
                         callback_count++;
                         Log.d("callback", "IC: " + CLUB + " : " + callback_count);
-                        callbackClubs.add("IC : " + CLUB);
-                        for (int i = 0; i < callbackClubs.size(); i++) {
-                            Log.d("callback", callbackClubs.get(i));
+                        callbackClubs.put(CLUB, "IC");
+                        Enumeration<String> enumKey = callbackClubs.keys();
+                        while(enumKey.hasMoreElements()){
+                            String key = enumKey.nextElement();
+                            String val = callbackClubs.get(key);
+                            Log.d("clubs", key + " : " + val);
                         }
                         layout.removeView(WEBVIEW);
                     }

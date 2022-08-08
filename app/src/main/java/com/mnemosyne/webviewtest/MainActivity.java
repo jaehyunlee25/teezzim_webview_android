@@ -3,13 +3,10 @@ package com.mnemosyne.webviewtest;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.app.AlertDialog;
 import android.content.ContentValues;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.AssetManager;
-import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.net.http.SslError;
@@ -343,6 +340,9 @@ public class MainActivity extends AppCompatActivity {
                                 }else if(command.equals("reserveSearch")) {
                                     Log.d("mqtt", "start reserve search!!");
                                     act = ReserveSearchActivity.class;
+                                }else if(command.equals("reserveSearchAll")) {
+                                    Log.d("mqtt", "start reserve search all!!");
+                                    act = ReserveSearchAll.class;
                                 }else if(command.equals("reserveCancel")) {
                                     Log.d("mqtt", "start reserve cancel!!");
                                     act = ReserveCancelActivity.class;
@@ -360,6 +360,8 @@ public class MainActivity extends AppCompatActivity {
                                     intent.putExtra("date", json.getString("date"));
                                     intent.putExtra("course", json.getString("course"));
                                     intent.putExtra("time", json.getString("time"));
+                                } else if(command.equals("reserveSearchAll")){
+                                    intent.putExtra("clubs", json.getString("clubs"));
                                 }
                                 startActivity(intent);
 
@@ -571,7 +573,7 @@ public class MainActivity extends AppCompatActivity {
         searchAll.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Class act = SearchAll.class;
+                Class act = ReserveSearchAll.class;
                 Intent intent = new Intent(getApplicationContext(), act);
                 startActivity(intent);
             }

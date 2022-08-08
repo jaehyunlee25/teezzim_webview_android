@@ -28,7 +28,7 @@
         <activity android:name=".ReserveActivity" />
         <activity android:name=".ReserveSearchActivity" />
         <activity android:name=".ReserveCancelActivity" />
-        <activity android:name=".SearchAll" />
+        <activity android:name=".ReserveSearchAll" />
 
         <service
             android:name=".MyFirebaseMessagingService"
