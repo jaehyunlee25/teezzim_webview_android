@@ -30,7 +30,8 @@
         <activity android:name=".ReserveCancelActivity" />
         <activity android:name=".ReserveSearchAll" />
         <activity android:name=".SearchAll" />
-
+        <activity android:name=".WebViewMain" />
+        <activity android:name=".LoginActivity" />
         <service
             android:name=".MyFirebaseMessagingService"
             android:enabled="true"

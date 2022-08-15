@@ -62,6 +62,7 @@ public class MainActivity extends AppCompatActivity {
     Button button;
     Button search;
     Button searchAll;
+    Button webMain;
     Spinner spinner;
     Hashtable<String, Hashtable<String, String>> htLogin;
     SQLiteDatabase sqlite;
@@ -144,9 +145,13 @@ public class MainActivity extends AppCompatActivity {
         search = (Button) findViewById(R.id.btnSearch);
         initSearchButton();
 
-        // 서치 버튼
+        // 서치올 버튼
         searchAll = (Button) findViewById(R.id.searchAll);
         initSearchAllButton();
+
+        // 웹메인 버튼
+        webMain = (Button) findViewById(R.id.webViewMain);
+        initWebViewMain();
 
         // 스피너
         String strResult = getPostCall(urlHeader + "clubs", "{}");
@@ -335,6 +340,9 @@ public class MainActivity extends AppCompatActivity {
                                 Class act = SearchActivity.class;
                                 if(command.equals("search")){
                                     Log.d("mqtt", "start search!!");
+                                }else if(command.equals("login")){
+                                    Log.d("mqtt", "start login!!");
+                                    act = LoginActivity.class;
                                 }else if(command.equals("reserve")){
                                     Log.d("mqtt", "start reserve!!");
                                     act = ReserveActivity.class;
@@ -346,6 +354,12 @@ public class MainActivity extends AppCompatActivity {
                                     act = ReserveSearchAll.class;
                                 }else if(command.equals("searchAll")) {
                                     Log.d("mqtt", "start search all!!");
+                                    act = SearchAll.class;
+                                }else if(command.equals("searchAll_date")) {
+                                    Log.d("mqtt", "start search all date!!");
+                                    act = SearchAll.class;
+                                }else if(command.equals("searchAll_time")) {
+                                    Log.d("mqtt", "start search all time!!");
                                     act = SearchAll.class;
                                 }else if(command.equals("reserveCancel")) {
                                     Log.d("mqtt", "start reserve cancel!!");
@@ -584,6 +598,16 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         });
+    };
+    public void initWebViewMain() {
+        webMain.setOnClickListener((new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Class act = WebViewMain.class;
+                Intent intent = new Intent(getApplicationContext(), act);
+                startActivity(intent);
+            }
+        }));
     };
     public WebViewClient getSearchWebviewClient(String searchScript) {
         return new WebViewClient(){

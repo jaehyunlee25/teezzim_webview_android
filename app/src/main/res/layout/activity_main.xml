@@ -21,7 +21,7 @@
             android:id="@+id/button"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="0.4"
+            android:layout_weight="0.25"
             android:text="Go">
         </Button>
         <TextView
@@ -34,20 +34,8 @@
             android:id="@+id/btnSearch"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="0.4"
+            android:layout_weight="0.25"
             android:text="Search">
-        </Button>
-    </LinearLayout>
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
-        <Button
-            android:id="@+id/searchAll"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="0.4"
-            android:text="ReserveSearchAll">
         </Button>
         <TextView
             android:gravity="center"
@@ -56,11 +44,49 @@
             android:layout_weight="0.01"
             android:text="" />
         <Button
+            android:id="@+id/searchAll"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.25"
+            android:text="예약조회All">
+        </Button>
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <Button
             android:id="@+id/noAction"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="0.4"
             android:text="SearchAll">
+        </Button>
+        <TextView
+            android:gravity="center"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.01"
+            android:text="" />
+        <Button
+            android:id="@+id/webViewMain"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.25"
+            android:text="web Main">
+        </Button>
+        <TextView
+            android:gravity="center"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.01"
+            android:text="" />
+        <Button
+            android:id="@+id/saved"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.25"
+            android:text="준비중">
         </Button>
     </LinearLayout>
     <WebView
