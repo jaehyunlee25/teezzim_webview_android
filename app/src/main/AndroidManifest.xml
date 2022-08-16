@@ -30,6 +30,8 @@
         <activity android:name=".ReserveCancelActivity" />
         <activity android:name=".ReserveSearchAll" />
         <activity android:name=".SearchAll" />
+        <activity android:name=".SearchAllDate" />
+        <activity android:name=".SearchAllTime" />
         <activity android:name=".WebViewMain" />
         <activity android:name=".LoginActivity" />
         <service

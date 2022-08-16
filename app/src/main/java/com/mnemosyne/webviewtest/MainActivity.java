@@ -357,10 +357,10 @@ public class MainActivity extends AppCompatActivity {
                                     act = SearchAll.class;
                                 }else if(command.equals("searchAll_date")) {
                                     Log.d("mqtt", "start search all date!!");
-                                    act = SearchAll.class;
+                                    act = SearchAllDate.class;
                                 }else if(command.equals("searchAll_time")) {
                                     Log.d("mqtt", "start search all time!!");
-                                    act = SearchAll.class;
+                                    act = SearchAllTime.class;
                                 }else if(command.equals("reserveCancel")) {
                                     Log.d("mqtt", "start reserve cancel!!");
                                     act = ReserveCancelActivity.class;
@@ -380,7 +380,11 @@ public class MainActivity extends AppCompatActivity {
                                     intent.putExtra("time", json.getString("time"));
                                 } else if(command.equals("reserveSearchAll")){
                                     intent.putExtra("clubs", json.getString("clubs"));
-                                } else if(command.equals("searchAll")){
+                                } else if(
+                                    command.equals("searchAll")
+                                    || command.equals("searchAll_date")
+                                    || command.equals("searchAll_time")
+                                ){
                                     intent.putExtra("clubs", json.getString("clubs"));
                                 }
                                 startActivity(intent);
