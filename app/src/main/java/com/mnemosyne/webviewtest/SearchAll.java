@@ -65,6 +65,7 @@ public class SearchAll extends AppCompatActivity {
     SharedPreferences spf;
     MqttAndroidClient mqtt;
     Hashtable<String, String> callbackClubs;
+    String deviceId;
 
     String urlMqtt = "tcp://dev.mnemosyne.co.kr:1883";
     // String urlHeader = "http://mnemosynesolutions.co.kr:8080/";
@@ -80,6 +81,7 @@ public class SearchAll extends AppCompatActivity {
 
         // preference
         spf = getSharedPreferences("DEVICE", MODE_PRIVATE);
+        deviceId = spf.getString("UUID", "");
 
         // mqtt
         mqtt = new MqttAndroidClient(this, urlMqtt, MqttClient.generateClientId());
@@ -236,6 +238,10 @@ public class SearchAll extends AppCompatActivity {
             @Override
             public boolean onConsoleMessage(ConsoleMessage message) {
                 try{
+                    //Log.d("mqtt", "mqtt webview log!!" + message.message());
+                    String param = getLogParam(deviceId, club,"console", message.message());
+                    byte[] bts = param.getBytes(StandardCharsets.UTF_8);
+                    mqtt.publish("TZLOG", bts, 0, false );
                 } catch(Exception e) {
                     e.printStackTrace();
                 }
@@ -244,12 +250,38 @@ public class SearchAll extends AppCompatActivity {
             @Override
             public boolean onJsAlert(WebView view, String url, String message, final JsResult result) {
                 Log.d("jsAlert", message + " :: " + club);
+                try{
+                    //Log.d("mqtt", "mqtt webview log!!" + message.message());
+                    String param = getLogParam(deviceId, club,"jsAlert", message);
+                    byte[] bts = param.getBytes(StandardCharsets.UTF_8);
+                    mqtt.publish("TZLOG", bts, 0, false );
+                    //Log.d("mqtt", "mqtt webview log end!!" + message.message());
+                } catch(MqttException e) {
+                    Log.d("mqtt", "mqtt webview mqtt error!!" + message);
+                    e.printStackTrace();
+                } catch(Exception e) {
+                    Log.d("mqtt", "onJsAlert error!!" + message);
+                    e.printStackTrace();
+                }
                 result.confirm();
                 return true;
             }
             @Override
             public boolean onJsConfirm(WebView view, String url, String message, final JsResult result) {
                 Log.d("jsConfirm", message + " :: " + club);
+                try{
+                    //Log.d("mqtt", "mqtt webview log!!" + message.message());
+                    String param = getLogParam(deviceId, club,"jsConfirm", message);
+                    byte[] bts = param.getBytes(StandardCharsets.UTF_8);
+                    mqtt.publish("TZLOG", bts, 0, false );
+                    //Log.d("mqtt", "mqtt webview log end!!" + message.message());
+                } catch(MqttException e) {
+                    Log.d("mqtt", "mqtt webview mqtt error!!" + message);
+                    e.printStackTrace();
+                } catch(Exception e) {
+                    Log.d("mqtt", "onJsConfirm error!!" + message);
+                    e.printStackTrace();
+                }
                 result.confirm();
                 return true;
             }
@@ -257,6 +289,18 @@ public class SearchAll extends AppCompatActivity {
         wv.setWebViewClient((wvc));
         AndroidController ac = new AndroidController(wv, club);
         wv.addJavascriptInterface(ac, "AndroidController");
+    };
+    public String getLogParam(String deviceId, String clubId, String msgType, String message) {
+        JSONObject prm = new JSONObject();
+        try {
+            prm.put("deviceId", deviceId);
+            prm.put("subType", msgType);
+            prm.put("clubId", clubId);
+            prm.put("message", message);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return prm.toString();
     };
     public class AndroidController {
         final public Handler handler = new Handler();

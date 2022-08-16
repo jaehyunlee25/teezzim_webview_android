@@ -127,7 +127,7 @@ public class LoginActivity extends AppCompatActivity {
             public boolean onConsoleMessage(ConsoleMessage message) {
                 try{
                     //Log.d("mqtt", "mqtt webview log!!" + message.message());
-                    String param = getLogParam(deviceId, "console", message.message());
+                    String param = getLogParam(deviceId, clubEngName, "console", message.message());
                     byte[] bts = param.getBytes(StandardCharsets.UTF_8);
                     mqtt.publish("TZLOG", bts, 0, false );
                     //Log.d("mqtt", "mqtt webview log end!!" + message.message());
@@ -145,7 +145,7 @@ public class LoginActivity extends AppCompatActivity {
                 Log.d("jsLog", message);
                 try{
                     //Log.d("mqtt", "mqtt webview log!!" + message.message());
-                    String param = getLogParam(deviceId, "jsAlert", message);
+                    String param = getLogParam(deviceId, clubEngName,"jsAlert", message);
                     byte[] bts = param.getBytes(StandardCharsets.UTF_8);
                     mqtt.publish("TZLOG", bts, 0, false );
                     //Log.d("mqtt", "mqtt webview log end!!" + message.message());
@@ -164,7 +164,7 @@ public class LoginActivity extends AppCompatActivity {
                 Log.d("jsConfirm", message);
                 try{
                     //Log.d("mqtt", "mqtt webview log!!" + message.message());
-                    String param = getLogParam(deviceId, "jsConfirm", message);
+                    String param = getLogParam(deviceId, clubEngName,"jsConfirm", message);
                     byte[] bts = param.getBytes(StandardCharsets.UTF_8);
                     mqtt.publish("TZLOG", bts, 0, false );
                     //Log.d("mqtt", "mqtt webview log end!!" + message.message());
@@ -184,11 +184,12 @@ public class LoginActivity extends AppCompatActivity {
         LoginActivity.AndroidController ac = new LoginActivity.AndroidController();
         wView.addJavascriptInterface(ac, "AndroidController");
     }
-    public String getLogParam(String deviceId, String msgType, String message) {
+    public String getLogParam(String deviceId, String clubId, String msgType, String message) {
         JSONObject prm = new JSONObject();
         try {
             prm.put("deviceId", deviceId);
             prm.put("subType", msgType);
+            prm.put("clubId", clubId);
             prm.put("message", message);
         } catch (JSONException e) {
             e.printStackTrace();

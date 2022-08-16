@@ -109,10 +109,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onConsoleMessage(ConsoleMessage message) {
                 try{
-                    Log.d("mqtt", "mqtt webview log!!" + message.message());
+                    //Log.d("mqtt", "mqtt webview log!!" + message.message());
                     byte[] bts = message.message().getBytes(StandardCharsets.UTF_8);
                     mqtt.publish("TZLOG", bts, 0, false );
-                    Log.d("mqtt", "mqtt webview log end!!" + message.message());
+                    //Log.d("mqtt", "mqtt webview log end!!" + message.message());
                 } catch(MqttException e) {
                     Log.d("mqtt", "mqtt webview mqtt error!!" + message.message());
                     e.printStackTrace();
