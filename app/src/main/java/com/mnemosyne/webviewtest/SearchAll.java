@@ -109,11 +109,12 @@ public class SearchAll extends AppCompatActivity {
                 arr.put(arrClubs.get(i));
             }
             prm.put("clubs", arr);
+            prm.put("date", "20220823");
         } catch (JSONException e) {
             e.printStackTrace();
         }
         String param = prm.toString();
-        String strResult = getPostCall(urlHeader + "searchbots_admin", param);
+        String strResult = getPostCall(urlHeader + "searchbots_time", param);
 
         // json parse
         JSONObject json;
