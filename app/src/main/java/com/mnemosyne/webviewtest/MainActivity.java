@@ -357,9 +357,15 @@ public class MainActivity extends AppCompatActivity {
                             }*/
                             String mqttMessage = message.toString();
                             Log.d("mqtt", mqttMessage);
-                            qWork.offer(mqttMessage);
+                            if(mqttMessage.equals("workDone")) {
+                                isWork = false;
+                                doMqttWork();
+                            }else {
+                                qWork.offer(mqttMessage);
+                                doMqttWork();
+                            }
 
-                            doMqttWork(0);
+
                         }
                     });
                 } catch (MqttException e) {
@@ -385,8 +391,9 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
-    public void doMqttWork(Integer opt) {
+    public void doMqttWork() {
         if(isWork) return;
+        if(qWork.size() == 0) return;
 
         isWork = true;
 
@@ -449,8 +456,9 @@ public class MainActivity extends AppCompatActivity {
                 intent.putExtra("clubs", json.getString("clubs"));
             }
             intent.putExtra(Intent.EXTRA_RETURN_RESULT, true);
+            startActivity(intent);
             // launcher.launch(intent);
-            startActivityForResult(intent,0);
+            // startActivityForResult(intent,0);
 
         } catch (JSONException e) {
             Log.d("mqtt", "mqtt json parse fail!!");

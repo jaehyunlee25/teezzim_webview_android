@@ -167,7 +167,7 @@ public class SearchAllDate extends AppCompatActivity {
                 e.printStackTrace();
             }
 
-            AndroidController ac = new AndroidController(wv, club);
+            AndroidController ac = new AndroidController(wv, club, mqtt, deviceId);
             wv.addJavascriptInterface(ac, "AndroidController");
         }
 
@@ -303,16 +303,21 @@ public class SearchAllDate extends AppCompatActivity {
             }
         });
         wv.setWebViewClient((wvc));
-        AndroidController ac = new AndroidController(wv, club);
+        AndroidController ac = new AndroidController(wv, club, mqtt, deviceId);
         wv.addJavascriptInterface(ac, "AndroidController");
     };
     public class AndroidController {
         final public Handler handler = new Handler();
         private WebView WEBVIEW;
         private String CLUB;
-        public AndroidController (WebView wv, String club) {
+        private MqttAndroidClient MQTT;
+        private String DEVICEID;
+
+        public AndroidController (WebView wv, String club, MqttAndroidClient mqtt, String deviceId) {
             WEBVIEW = wv;
             CLUB = club;
+            DEVICEID = deviceId;
+            MQTT = mqtt;
         };
 
         @JavascriptInterface
@@ -372,8 +377,14 @@ public class SearchAllDate extends AppCompatActivity {
                     }
                     if(callback_count == callbackClubs.size()) {
                         Log.d("mqtt", "finish()");
-                        setResult (RESULT_OK);
-                        finish();
+                        // setResult (RESULT_OK);
+                        byte[] bts = "workDone".getBytes(StandardCharsets.UTF_8);
+                        try {
+                            MQTT.publish(DEVICEID, bts, 0, false);
+                            finish();
+                        } catch (MqttException e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
             });
