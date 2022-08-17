@@ -61,18 +61,19 @@ public class WebViewMain extends AppCompatActivity {
 
         // preference
         spf = getSharedPreferences("DEVICE", MODE_PRIVATE);
-
+        String deviceId = spf.getString("UUID", "");
 
         // mqtt
         mqtt = new MqttAndroidClient(this, urlMqtt, MqttClient.generateClientId());
         setMqtt();
 
-        /*
+
         // 서비스로부터 자료 수신
         Intent service = getIntent();
         String clubEngName = service.getStringExtra("club");
         String clubId = service.getStringExtra("club_id");
 
+        /*
         JSONObject prm = new JSONObject();
         try {
             prm.put("club", clubEngName);
@@ -131,7 +132,8 @@ public class WebViewMain extends AppCompatActivity {
             public boolean onConsoleMessage(ConsoleMessage message) {
                 try{
                     //Log.d("mqtt", "mqtt webview log!!" + message.message());
-                    byte[] bts = message.message().getBytes(StandardCharsets.UTF_8);
+                    String param = getLogParam(deviceId, clubEngName,"console", message.message());
+                    byte[] bts = param.getBytes(StandardCharsets.UTF_8);
                     mqtt.publish("TZLOG", bts, 0, false );
                     //Log.d("mqtt", "mqtt webview log end!!" + message.message());
                 } catch(MqttException e) {
@@ -148,7 +150,8 @@ public class WebViewMain extends AppCompatActivity {
                 Log.d("jsLog", message);
                 try{
                     //Log.d("mqtt", "mqtt webview log!!" + message.message());
-                    byte[] bts = message.getBytes(StandardCharsets.UTF_8);
+                    String param = getLogParam(deviceId, clubEngName,"jsAlert", message);
+                    byte[] bts = param.getBytes(StandardCharsets.UTF_8);
                     mqtt.publish("TZLOG", bts, 0, false );
                     //Log.d("mqtt", "mqtt webview log end!!" + message.message());
                 } catch(MqttException e) {
@@ -166,7 +169,8 @@ public class WebViewMain extends AppCompatActivity {
                 Log.d("jsConfirm", message);
                 try{
                     //Log.d("mqtt", "mqtt webview log!!" + message.message());
-                    byte[] bts = message.getBytes(StandardCharsets.UTF_8);
+                    String param = getLogParam(deviceId, clubEngName,"jsConfirm", message);
+                    byte[] bts = param.getBytes(StandardCharsets.UTF_8);
                     mqtt.publish("TZLOG", bts, 0, false );
                     //Log.d("mqtt", "mqtt webview log end!!" + message.message());
                 } catch(MqttException e) {
@@ -185,6 +189,18 @@ public class WebViewMain extends AppCompatActivity {
         WebViewMain.AndroidController ac = new WebViewMain.AndroidController();
         wView.addJavascriptInterface(ac, "AndroidController");
     }
+    public String getLogParam(String deviceId, String clubId, String msgType, String message) {
+        JSONObject prm = new JSONObject();
+        try {
+            prm.put("deviceId", deviceId);
+            prm.put("subType", msgType);
+            prm.put("clubId", clubId);
+            prm.put("message", message);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return prm.toString();
+    };
     public void setLoginAdminAccount(String strAccountResult) {
         // json parse
         JSONObject jsonAccount;

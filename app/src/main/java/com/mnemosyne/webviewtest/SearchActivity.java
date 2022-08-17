@@ -131,7 +131,8 @@ public class SearchActivity extends AppCompatActivity {
             public boolean onConsoleMessage(ConsoleMessage message) {
                 try{
                     // Log.d("mqtt", "mqtt webview log!!" + message.message());
-                    byte[] bts = message.message().getBytes(StandardCharsets.UTF_8);
+                    String param = getLogParam(deviceId, clubEngName,"console", message.message());
+                    byte[] bts = param.getBytes(StandardCharsets.UTF_8);
                     mqtt.publish("TZLOG", bts, 0, false );
                     // Log.d("mqtt", "mqtt webview log end!!" + message.message());
                 } catch(MqttException e) {
@@ -148,7 +149,8 @@ public class SearchActivity extends AppCompatActivity {
                 Log.d("jsLog", message);
                 try{
                     //Log.d("mqtt", "mqtt webview log!!" + message.message());
-                    byte[] bts = message.getBytes(StandardCharsets.UTF_8);
+                    String param = getLogParam(deviceId, clubEngName,"jsAlert", message);
+                    byte[] bts = param.getBytes(StandardCharsets.UTF_8);
                     mqtt.publish("TZLOG", bts, 0, false );
                     //Log.d("mqtt", "mqtt webview log end!!" + message.message());
                 } catch(MqttException e) {
@@ -166,7 +168,8 @@ public class SearchActivity extends AppCompatActivity {
                 Log.d("jsConfirm", message);
                 try{
                     //Log.d("mqtt", "mqtt webview log!!" + message.message());
-                    byte[] bts = message.getBytes(StandardCharsets.UTF_8);
+                    String param = getLogParam(deviceId, clubEngName,"jsConfirm", message);
+                    byte[] bts = param.getBytes(StandardCharsets.UTF_8);
                     mqtt.publish("TZLOG", bts, 0, false );
                     //Log.d("mqtt", "mqtt webview log end!!" + message.message());
                 } catch(MqttException e) {
@@ -186,6 +189,18 @@ public class SearchActivity extends AppCompatActivity {
         wView.addJavascriptInterface(ac, "AndroidController");
 
     }
+    public String getLogParam(String deviceId, String clubId, String msgType, String message) {
+        JSONObject prm = new JSONObject();
+        try {
+            prm.put("deviceId", deviceId);
+            prm.put("subType", msgType);
+            prm.put("clubId", clubId);
+            prm.put("message", message);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return prm.toString();
+    };
     public void setMqtt() {
         IMqttToken token = null;
         try{

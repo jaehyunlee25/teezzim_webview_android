@@ -23,6 +23,13 @@ import android.widget.LinearLayout;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import org.eclipse.paho.android.service.MqttAndroidClient;
+import org.eclipse.paho.client.mqttv3.DisconnectedBufferOptions;
+import org.eclipse.paho.client.mqttv3.IMqttActionListener;
+import org.eclipse.paho.client.mqttv3.IMqttToken;
+import org.eclipse.paho.client.mqttv3.MqttClient;
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.eclipse.paho.client.mqttv3.MqttException;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -34,6 +41,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -50,6 +58,9 @@ public class ReserveSearchAll extends AppCompatActivity {
     Integer callback_count = 0;
     Hashtable<String, Hashtable<String, String>> htLogin;
     Hashtable<String, String> callbackClubs;
+    String deviceId;
+    MqttAndroidClient mqtt;
+    String urlMqtt = "tcp://dev.mnemosyne.co.kr:1883";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,6 +72,11 @@ public class ReserveSearchAll extends AppCompatActivity {
 
         // preference
         spf = getSharedPreferences("DEVICE", MODE_PRIVATE);
+        deviceId = spf.getString("UUID", "");
+
+        // mqtt
+        mqtt = new MqttAndroidClient(this, urlMqtt, MqttClient.generateClientId());
+        setMqtt();
 
         // 로그인 관리자 계정
         String strAccountResult = getPostCall(urlHeader + "account", "{}");
@@ -145,6 +161,49 @@ public class ReserveSearchAll extends AppCompatActivity {
             }
         }
     }
+    public void setMqtt() {
+        IMqttToken token = null;
+        try{
+            MqttConnectOptions mcops = new MqttConnectOptions();
+            mcops.setCleanSession(false);
+            mcops.setAutomaticReconnect(true);
+            mcops.setWill("aaa", "i am going offline".getBytes(StandardCharsets.UTF_8), 1, true);
+
+            token = mqtt.connect(mcops);
+        } catch (MqttException e) {
+            e.printStackTrace();
+            return;
+        }
+        token.setActionCallback(new IMqttActionListener() {
+            @Override
+            public void onSuccess(IMqttToken asyncActionToken) {
+                DisconnectedBufferOptions disconnectedBufferOptions = new DisconnectedBufferOptions();
+                disconnectedBufferOptions.setBufferEnabled(true);
+                disconnectedBufferOptions.setBufferSize(100);
+                disconnectedBufferOptions.setPersistBuffer(true);
+                disconnectedBufferOptions.setDeleteOldestMessages(false);
+                mqtt.setBufferOpts(disconnectedBufferOptions);
+                Log.d("mqtt", "mqtt connection success!!");
+            }
+
+            @Override
+            public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
+                Log.e("mqtt", "Failure " + exception.toString());
+            }
+        });
+    };
+    public String getLogParam(String deviceId, String clubId, String msgType, String message) {
+        JSONObject prm = new JSONObject();
+        try {
+            prm.put("deviceId", deviceId);
+            prm.put("subType", msgType);
+            prm.put("clubId", clubId);
+            prm.put("message", message);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return prm.toString();
+    };
     public void setLoginAdminAccount(String strAccountResult) {
         // json parse
         JSONObject jsonAccount;
@@ -203,6 +262,10 @@ public class ReserveSearchAll extends AppCompatActivity {
             @Override
             public boolean onConsoleMessage(ConsoleMessage message) {
                 try{
+                    //Log.d("mqtt", "mqtt webview log!!" + message.message());
+                    String param = getLogParam(deviceId, club,"console", message.message());
+                    byte[] bts = param.getBytes(StandardCharsets.UTF_8);
+                    mqtt.publish("TZLOG", bts, 0, false );
                 } catch(Exception e) {
                     e.printStackTrace();
                 }
@@ -211,12 +274,38 @@ public class ReserveSearchAll extends AppCompatActivity {
             @Override
             public boolean onJsAlert(WebView view, String url, String message, final JsResult result) {
                 Log.d("jsAlert", message + " :: " + club);
+                try{
+                    //Log.d("mqtt", "mqtt webview log!!" + message.message());
+                    String param = getLogParam(deviceId, club,"jsAlert", message);
+                    byte[] bts = param.getBytes(StandardCharsets.UTF_8);
+                    mqtt.publish("TZLOG", bts, 0, false );
+                    //Log.d("mqtt", "mqtt webview log end!!" + message.message());
+                } catch(MqttException e) {
+                    Log.d("mqtt", "mqtt webview mqtt error!!" + message);
+                    e.printStackTrace();
+                } catch(Exception e) {
+                    Log.d("mqtt", "onJsAlert error!!" + message);
+                    e.printStackTrace();
+                }
                 result.confirm();
                 return true;
             }
             @Override
             public boolean onJsConfirm(WebView view, String url, String message, final JsResult result) {
                 Log.d("jsConfirm", message + " :: " + club);
+                try{
+                    //Log.d("mqtt", "mqtt webview log!!" + message.message());
+                    String param = getLogParam(deviceId, club,"jsConfirm", message);
+                    byte[] bts = param.getBytes(StandardCharsets.UTF_8);
+                    mqtt.publish("TZLOG", bts, 0, false );
+                    //Log.d("mqtt", "mqtt webview log end!!" + message.message());
+                } catch(MqttException e) {
+                    Log.d("mqtt", "mqtt webview mqtt error!!" + message);
+                    e.printStackTrace();
+                } catch(Exception e) {
+                    Log.d("mqtt", "onJsConfirm error!!" + message);
+                    e.printStackTrace();
+                }
                 result.confirm();
                 return true;
             }

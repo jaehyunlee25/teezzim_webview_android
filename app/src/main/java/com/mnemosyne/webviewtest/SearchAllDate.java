@@ -166,13 +166,18 @@ public class SearchAllDate extends AppCompatActivity {
             } catch (JSONException e) {
                 e.printStackTrace();
             }
+
+            AndroidController ac = new AndroidController(wv, club);
+            wv.addJavascriptInterface(ac, "AndroidController");
         }
+
     }
-    public String getLogParam(String deviceId, String msgType, String message) {
+    public String getLogParam(String deviceId, String clubId, String msgType, String message) {
         JSONObject prm = new JSONObject();
         try {
             prm.put("deviceId", deviceId);
             prm.put("subType", msgType);
+            prm.put("clubId", clubId);
             prm.put("message", message);
         } catch (JSONException e) {
             e.printStackTrace();
@@ -250,7 +255,7 @@ public class SearchAllDate extends AppCompatActivity {
             public boolean onConsoleMessage(ConsoleMessage message) {
                 try{
                     //Log.d("mqtt", "mqtt webview log!!" + message.message());
-                    String param = getLogParam(deviceId, "console", message.message());
+                    String param = getLogParam(deviceId, club,"console", message.message());
                     byte[] bts = param.getBytes(StandardCharsets.UTF_8);
                     mqtt.publish("TZLOG", bts, 0, false );
                 } catch(Exception e) {
@@ -263,7 +268,7 @@ public class SearchAllDate extends AppCompatActivity {
                 Log.d("jsAlert", message + " :: " + club);
                 try{
                     //Log.d("mqtt", "mqtt webview log!!" + message.message());
-                    String param = getLogParam(deviceId, "jsAlert", message);
+                    String param = getLogParam(deviceId, club,"jsAlert", message);
                     byte[] bts = param.getBytes(StandardCharsets.UTF_8);
                     mqtt.publish("TZLOG", bts, 0, false );
                     //Log.d("mqtt", "mqtt webview log end!!" + message.message());
@@ -282,7 +287,7 @@ public class SearchAllDate extends AppCompatActivity {
                 Log.d("jsConfirm", message + " :: " + club);
                 try{
                     //Log.d("mqtt", "mqtt webview log!!" + message.message());
-                    String param = getLogParam(deviceId, "jsConfirm", message);
+                    String param = getLogParam(deviceId, club,"jsConfirm", message);
                     byte[] bts = param.getBytes(StandardCharsets.UTF_8);
                     mqtt.publish("TZLOG", bts, 0, false );
                     //Log.d("mqtt", "mqtt webview log end!!" + message.message());
@@ -309,6 +314,7 @@ public class SearchAllDate extends AppCompatActivity {
             WEBVIEW = wv;
             CLUB = club;
         };
+
         @JavascriptInterface
         public void message(final String message) {
             Log.d("message from webview", message);
@@ -339,6 +345,35 @@ public class SearchAllDate extends AppCompatActivity {
                             Log.d("clubs", key + " : " + val);
                         }
                         layout.removeView(WEBVIEW);
+                    }
+                    if(message.equals("SUCCESS_OF_GET_DATE")) {
+                        callback_count++;
+                        Log.d("callback", "SUCCESS_OF_GET_DATE: " + CLUB + " : " + callback_count);
+                        callbackClubs.put(CLUB, "SUCCESS_OF_GET_DATE");
+                        Enumeration<String> enumKey = callbackClubs.keys();
+                        while(enumKey.hasMoreElements()){
+                            String key = enumKey.nextElement();
+                            String val = callbackClubs.get(key);
+                            Log.d("clubs", key + " : " + val);
+                        }
+                        layout.removeView(WEBVIEW);
+                    }
+                    if(message.equals("FAIL_OF_GET_DATE")) {
+                        callback_count++;
+                        Log.d("callback", "FAIL_OF_GET_DATE: " + CLUB + " : " + callback_count);
+                        callbackClubs.put(CLUB, "FAIL_OF_GET_DATE");
+                        Enumeration<String> enumKey = callbackClubs.keys();
+                        while(enumKey.hasMoreElements()){
+                            String key = enumKey.nextElement();
+                            String val = callbackClubs.get(key);
+                            Log.d("clubs", key + " : " + val);
+                        }
+                        layout.removeView(WEBVIEW);
+                    }
+                    if(callback_count == callbackClubs.size()) {
+                        Log.d("mqtt", "finish()");
+                        setResult (RESULT_OK);
+                        finish();
                     }
                 }
             });

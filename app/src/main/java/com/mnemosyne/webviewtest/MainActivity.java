@@ -1,8 +1,13 @@
 package com.mnemosyne.webviewtest;
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.app.Activity;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -43,6 +48,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Hashtable;
+import java.util.Queue;
+import java.util.LinkedList;
 
 import org.eclipse.paho.android.service.MqttAndroidClient;
 import org.eclipse.paho.client.mqttv3.DisconnectedBufferOptions;
@@ -73,6 +80,23 @@ public class MainActivity extends AppCompatActivity {
     MqttAndroidClient mqtt;
     String urlMqtt = "tcp://dev.mnemosyne.co.kr:1883";
     // String urlHeader = "http://10.0.2.2:8080/";
+    Queue<String> qWork = new LinkedList<>();
+    Boolean isWork = false;
+
+    // 액티비티 론처
+    ActivityResultLauncher<Intent> launcher = registerForActivityResult(
+        new ActivityResultContracts.StartActivityForResult(),
+        new ActivityResultCallback<ActivityResult>() {
+            @Override
+            public void onActivityResult(ActivityResult result) {
+                if (result.getResultCode() == Activity.RESULT_OK) {
+                    Log.d("mqtt", "result_ok");
+                } else if (result.getResultCode() == Activity.RESULT_CANCELED) {
+                    Log.d("mqtt", "RESULT_CANCELED");
+                }
+            }
+        }
+    );
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -109,10 +133,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onConsoleMessage(ConsoleMessage message) {
                 try{
-                    Log.d("mqtt", "mqtt webview log!!" + message.message());
+                    //Log.d("mqtt", "mqtt webview log!!" + message.message());
                     byte[] bts = message.message().getBytes(StandardCharsets.UTF_8);
                     mqtt.publish("TZLOG", bts, 0, false );
-                    Log.d("mqtt", "mqtt webview log end!!" + message.message());
+                    //Log.d("mqtt", "mqtt webview log end!!" + message.message());
                 } catch(MqttException e) {
                     Log.d("mqtt", "mqtt webview mqtt error!!" + message.message());
                     e.printStackTrace();
@@ -159,6 +183,10 @@ public class MainActivity extends AppCompatActivity {
         spinner = (Spinner) findViewById(R.id.spinner);
         spinner.setAdapter(clubs);
         initSpinner();
+
+
+
+
 
         // 로그인 관리자 계정
         String strAccountResult = getPostCall(urlHeader + "account", "{}");
@@ -323,76 +351,15 @@ public class MainActivity extends AppCompatActivity {
                         Integer count = 0;
                         @Override
                         public void messageArrived(String topic, MqttMessage message) throws Exception {
-                            if(count == 0) {
+                            /*if(count == 0) {
                                 count = 1;
                                 return;
-                            }
+                            }*/
                             String mqttMessage = message.toString();
                             Log.d("mqtt", mqttMessage);
+                            qWork.offer(mqttMessage);
 
-                            // json parse
-                            JSONObject json;
-                            String command = "";
-                            try {
-                                json = new JSONObject(mqttMessage);
-                                command = json.getString("command");
-                                Log.d("mqtt", command);
-                                Class act = SearchActivity.class;
-                                if(command.equals("search")){
-                                    Log.d("mqtt", "start search!!");
-                                }else if(command.equals("login")){
-                                    Log.d("mqtt", "start login!!");
-                                    act = LoginActivity.class;
-                                }else if(command.equals("reserve")){
-                                    Log.d("mqtt", "start reserve!!");
-                                    act = ReserveActivity.class;
-                                }else if(command.equals("reserveSearch")) {
-                                    Log.d("mqtt", "start reserve search!!");
-                                    act = ReserveSearchActivity.class;
-                                }else if(command.equals("reserveSearchAll")) {
-                                    Log.d("mqtt", "start reserve search all!!");
-                                    act = ReserveSearchAll.class;
-                                }else if(command.equals("searchAll")) {
-                                    Log.d("mqtt", "start search all!!");
-                                    act = SearchAll.class;
-                                }else if(command.equals("searchAll_date")) {
-                                    Log.d("mqtt", "start search all date!!");
-                                    act = SearchAllDate.class;
-                                }else if(command.equals("searchAll_time")) {
-                                    Log.d("mqtt", "start search all time!!");
-                                    act = SearchAllTime.class;
-                                }else if(command.equals("reserveCancel")) {
-                                    Log.d("mqtt", "start reserve cancel!!");
-                                    act = ReserveCancelActivity.class;
-                                }else{
-
-                                }
-
-                                Intent intent = new Intent(getApplicationContext(), act);
-                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                intent.putExtra("club", json.getString("club"));
-                                intent.putExtra("club_id", json.getString("club_id"));
-                                if(command.equals("reserve") || command.equals("reserveCancel")){
-                                    intent.putExtra("year", json.getString("year"));
-                                    intent.putExtra("month", json.getString("month"));
-                                    intent.putExtra("date", json.getString("date"));
-                                    intent.putExtra("course", json.getString("course"));
-                                    intent.putExtra("time", json.getString("time"));
-                                } else if(command.equals("reserveSearchAll")){
-                                    intent.putExtra("clubs", json.getString("clubs"));
-                                } else if(
-                                    command.equals("searchAll")
-                                    || command.equals("searchAll_date")
-                                    || command.equals("searchAll_time")
-                                ){
-                                    intent.putExtra("clubs", json.getString("clubs"));
-                                }
-                                startActivity(intent);
-
-                            } catch (JSONException e) {
-                                Log.d("mqtt", "mqtt json parse fail!!");
-                                e.printStackTrace();
-                            }
+                            doMqttWork(0);
                         }
                     });
                 } catch (MqttException e) {
@@ -407,6 +374,90 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     };
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode == 0) {
+            if(resultCode == RESULT_OK) {
+                Log.d("mqtt", "RESULT_OK");
+            } else {
+                Log.d("mqtt", "RESULT_CANCELED");
+            }
+        }
+    }
+    public void doMqttWork(Integer opt) {
+        if(isWork) return;
+
+        isWork = true;
+
+        String strWork = qWork.poll();
+        // json parse
+        JSONObject json;
+        String command = "";
+        try {
+            json = new JSONObject(strWork);
+            command = json.getString("command");
+            Log.d("mqtt", command);
+            Class act = SearchActivity.class;
+            if(command.equals("search")){
+                Log.d("mqtt", "start search!!");
+            }else if(command.equals("login")){
+                Log.d("mqtt", "start login!!");
+                act = LoginActivity.class;
+            }else if(command.equals("reserve")){
+                Log.d("mqtt", "start reserve!!");
+                act = ReserveActivity.class;
+            }else if(command.equals("reserveSearch")) {
+                Log.d("mqtt", "start reserve search!!");
+                act = ReserveSearchActivity.class;
+            }else if(command.equals("reserveSearchAll")) {
+                Log.d("mqtt", "start reserve search all!!");
+                act = ReserveSearchAll.class;
+            }else if(command.equals("searchAll")) {
+                Log.d("mqtt", "start search all!!");
+                act = SearchAll.class;
+            }else if(command.equals("searchAll_date")) {
+                Log.d("mqtt", "start search all date!!");
+                act = SearchAllDate.class;
+            }else if(command.equals("searchAll_time")) {
+                Log.d("mqtt", "start search all time!!");
+                act = SearchAllTime.class;
+            }else if(command.equals("reserveCancel")) {
+                Log.d("mqtt", "start reserve cancel!!");
+                act = ReserveCancelActivity.class;
+            }else{
+
+            }
+
+            Intent intent = new Intent(getApplicationContext(), act);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.putExtra("club", json.getString("club"));
+            intent.putExtra("club_id", json.getString("club_id"));
+            if(command.equals("reserve") || command.equals("reserveCancel")){
+                intent.putExtra("year", json.getString("year"));
+                intent.putExtra("month", json.getString("month"));
+                intent.putExtra("date", json.getString("date"));
+                intent.putExtra("course", json.getString("course"));
+                intent.putExtra("time", json.getString("time"));
+            } else if(command.equals("reserveSearchAll")){
+                intent.putExtra("clubs", json.getString("clubs"));
+            } else if(
+                    command.equals("searchAll")
+                            || command.equals("searchAll_date")
+                            || command.equals("searchAll_time")
+            ){
+                intent.putExtra("clubs", json.getString("clubs"));
+            }
+            intent.putExtra(Intent.EXTRA_RETURN_RESULT, true);
+            // launcher.launch(intent);
+            startActivityForResult(intent,0);
+
+        } catch (JSONException e) {
+            Log.d("mqtt", "mqtt json parse fail!!");
+            e.printStackTrace();
+        }
+    }
+
     public String getCodeFromResult(String strResult) {
         // json parse
         JSONObject json;
